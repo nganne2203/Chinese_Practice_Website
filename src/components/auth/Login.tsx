@@ -1,12 +1,14 @@
 import type { FormProps } from 'antd';
 import { Button, Form, Input, Alert, message } from 'antd';
-import type { FieldType } from '../../types/Login';
+import type { LoginRequest } from '../../types/Authentication';
 import { useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import useLogin from '../../hooks/useLogin';
+import { useNavigate } from 'react-router';
 
 export default function Login() {
     const { isAuthenticated } = useAuth();
+    const navigate = useNavigate();
     const { 
         loginData, 
         setLoginData, 
@@ -21,28 +23,27 @@ export default function Login() {
     useEffect(() => {
         if (isAuthenticated) {
             message.success('Login successful!');
-            // You can add navigation logic here, e.g., using react-router
-            // navigate('/dashboard');
+            navigate('/dashboard');
         }
-    }, [isAuthenticated]);
+    }, [isAuthenticated, navigate]);
 
-    const onFinish: FormProps<FieldType>['onFinish'] = async (values) => {
+    const onFinish: FormProps<LoginRequest>['onFinish'] = async (values) => {
         clearError();
         setLoginData(values);
         
         await handleLogin();
     };
 
-    const onFinishFailed: FormProps<FieldType>['onFinishFailed'] = (errorInfo) => {
+    const onFinishFailed: FormProps<LoginRequest>['onFinishFailed'] = (errorInfo) => {
         console.log('Form validation failed:', errorInfo);
     };
 
-    const onValuesChange = (_changedValues: Partial<FieldType>, allValues: FieldType) => {
+    const onValuesChange = (_changedValues: Partial<LoginRequest>, allValues: LoginRequest) => {
         setLoginData(allValues);
     };
 
     return (
-        <div style={{ maxWidth: 400, margin: '0 auto', padding: '2rem' }}>
+        <div style={{ maxWidth: 400, margin: '0 auto', padding: '2rem'}}>
             <h2 style={{ textAlign: 'center', marginBottom: '2rem' }}>Login</h2>
             
             {error && (
@@ -70,7 +71,7 @@ export default function Login() {
                 autoComplete="off"
                 disabled={loading}
             >
-                <Form.Item<FieldType>
+                <Form.Item<LoginRequest>
                     label="Username"
                     name="userName"
                     rules={[
@@ -84,7 +85,7 @@ export default function Login() {
                     />
                 </Form.Item>
 
-                <Form.Item<FieldType>
+                <Form.Item<LoginRequest>
                     label="Password"
                     name="password"
                     rules={[
