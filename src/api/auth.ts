@@ -1,44 +1,114 @@
-import type { FieldType } from "../types/Login";
-import apiClient from "./apiClient";
+import type { LoginRequest, LoginApiResponse, LoginResponse, RegisterRequest, RegisterApiResponse, RefreshTokenRequest, RefreshTokenApiResponse, IntrospectApiResponse, IntrospectRequest } from "../types/Authentication";
+import apiClient from "../utils/apiClient";
 
-export const login = async (field: FieldType) => {
+const login = async (field: LoginRequest): Promise<LoginResponse> => {
     try {
-        const response = await apiClient.post('/auth/login', {
-            userName: field.userName,
-            password: field.password
-        });
+        const response = await apiClient.post<LoginApiResponse>('/api/auth/login', field);
 
-        const { token } = response.data.result.token;
-        console.log('Login response token:', token);
-        let profile = null;
-        if (token) {
-            try {
-                const payload = JSON.parse(atob(token.split('.')[1]));
-                profile = {
-                    userName: payload.sub,
-                    expiresAt: payload.exp,
-                    role: payload.scope
-                };
-
-                console.log('User profile:', profile);
-
-                if (token) localStorage.setItem('accessToken', token);
-                if (profile) localStorage.setItem('userProfile', JSON.stringify(profile));
-
-                return {
-                    success: true,
-                    data: {
-                        token,
-                        profile
-                    }
-                };
-            } catch (error) {
-                console.error('Fetching user profile failed:', error);
-            }
+        if (response.data.code !== 1000 || !response.data.result) {
+            throw new Error('Login failed: Invalid response');
         }
-        return response.data;
-    } catch (error) {
+
+        const { accessToken, refreshToken, user } = response.data.result;
+
+        console.log('Login response:', response.data.result);
+        localStorage.setItem('accessToken', accessToken);
+        localStorage.setItem('refreshToken', refreshToken);
+        localStorage.setItem('userProfile', JSON.stringify(user));
+
+        return { accessToken, refreshToken, user };
+    } catch (error: any) {
         console.error('Login failed:', error);
-        throw error;
+        if (error.response?.status === 400) throw new Error('User not found');
+        if (error.response?.status === 403) throw new Error('Invalid credentials');
+        if (error.response?.status === 500) throw new Error('Server error occurred');
+        throw new Error(error.message || 'Login failed');
     }
 };
+
+
+const register = async (field: RegisterRequest): Promise<RegisterApiResponse> => {
+    try {
+        const response = await apiClient.post<RegisterApiResponse>('/api/auth/register', field);
+
+        if (response.data.code !== 1000 || !response.data.result) {
+            throw new Error('Registration failed: Invalid response code');
+        }
+
+        console.log('Registration response:', response.data);
+        return response.data;
+    } catch (error: any) {
+        console.error('Registration failed:', error);
+        switch (error.response?.status) {
+            case 400:
+                throw new Error('Invalid registration data');
+            case 500:
+                throw new Error('Server error occurred');
+            default:
+                throw new Error(error.message || 'Registration failed');
+        }
+    }
+}
+
+const refreshToken = async (field: RefreshTokenRequest): Promise<Omit<LoginResponse, 'user'>> => {
+    try {
+        const response = await apiClient.post<RefreshTokenApiResponse>('/api/auth/refresh', field);
+
+        if (response.data.code !== 1000 || !response.data.result) {
+            throw new Error('Token refresh failed: Invalid response code');
+        }
+        console.log('Token refresh response:', response.data);
+        return response.data.result;
+    } catch (error: any) {
+        console.error('Token refresh failed:', error);
+        switch (error.response?.status) {
+            case 400:
+                throw new Error('User not found');
+            case 401:
+                throw new Error('Invalid refresh token');
+            case 500:
+                throw new Error('Server error occurred');
+            default:
+                throw new Error(error.message || 'Token refresh failed');
+        }
+    }
+}
+
+const logout = async (): Promise<void> => {
+    const accessToken = localStorage.getItem('accessToken');
+    if (!accessToken) return;
+    const refreshToken = localStorage.getItem('refreshToken');
+    if (!refreshToken) return;
+
+    await apiClient.post('/api/auth/logout', {
+        accessToken,
+        refreshToken
+    });
+
+    localStorage.removeItem('accessToken');
+    localStorage.removeItem('refreshToken');
+    localStorage.removeItem('userProfile');
+}
+
+const introspect = async (field: IntrospectRequest): Promise<boolean> => {
+    try {
+        const response = await apiClient.post<IntrospectApiResponse>('/api/auth/introspect', field);
+
+        if (response.data.code !== 1000 || !response.data.result) {
+            throw new Error('Introspection failed: Invalid response');
+        }
+
+        return response.data.result.valid;
+    } catch (error) {
+        console.error('Introspection failed:', error);
+        return false;
+    }
+}
+
+export const AUTH_API = {
+    login,
+    register,
+    refreshToken,
+    logout,
+    introspect
+}
