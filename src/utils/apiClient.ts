@@ -30,15 +30,16 @@ apiClient.interceptors.response.use(
             const refreshTokenValue = localStorage.getItem('refreshToken');
             if (refreshTokenValue) {
                 try {
-                    const refreshResponse = await apiClient.post('/auth/refresh', { 
+                    const refreshResponse = await apiClient.post('/api/auth/refresh', { 
                         refreshToken: refreshTokenValue 
                     });
                     
-                    const { accessToken } = refreshResponse.data;
+                    const { accessToken, refreshToken } = refreshResponse.data.result;
                     
                     if (accessToken) {
                         localStorage.setItem('accessToken', accessToken); 
-                        
+                        localStorage.setItem('refreshToken', refreshToken);
+
                         originalRequest.headers.Authorization = `Bearer ${accessToken}`;
                         return apiClient(originalRequest);
                     }
@@ -51,6 +52,8 @@ apiClient.interceptors.response.use(
                 }
             } else {
                 localStorage.removeItem('accessToken');
+                localStorage.removeItem('refreshToken');
+                localStorage.removeItem('userProfile');
                 window.location.href = '/login';
             }
         }

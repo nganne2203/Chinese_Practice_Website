@@ -1,4 +1,4 @@
-import type { JWTPayload } from '../types/Login';
+import type { JWTPayload } from "../types/Jwt";
 
 export function decodeJWTToken(token: string): JWTPayload | null {
   try {

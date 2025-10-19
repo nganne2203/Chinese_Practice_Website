@@ -1,11 +1,12 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import type { FieldType, User } from '../types/Login';
-import { loginUser, logoutUser, getCurrentUser } from '../services/authService';
+import type { LoginRequest } from '../types/Authentication';
+import type { User } from '../types/User';
+import { AUTH_API } from './../api/auth';
 
 interface AuthContextType {
   user: User | null;
   loading: boolean;
-  login: (credentials: FieldType) => Promise<{ success: boolean; error?: string }>;
+  login: (credentials: LoginRequest) => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
   isAuthenticated: boolean;
 }
@@ -18,6 +19,25 @@ export const useAuth = () => {
     throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
+};
+
+const getCurrentUser = (): User | null => {
+  try {
+    const userProfile = localStorage.getItem('userProfile');
+    const accessToken = localStorage.getItem('accessToken');
+    
+    if (userProfile && accessToken) {
+      const user = JSON.parse(userProfile);
+      return {
+        ...user
+      };
+    }
+    
+    return null;
+  } catch (error) {
+    console.error('Error parsing user profile:', error);
+    return null;
+  }
 };
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
@@ -40,24 +60,27 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     checkExistingAuth();
   }, []);
 
-  const login = async (credentials: FieldType): Promise<{ success: boolean; error?: string }> => {
+  const loginConst = async (credentials: LoginRequest): Promise<{ success: boolean; error?: string }> => {
     setLoading(true);
     try {
-      const result = await loginUser(credentials);
+      const result = await AUTH_API.login(credentials);
       
-      if (result.success && result.user) {
-        setUser(result.user);
+      if (result.user) {
+        const authenticatedUser: User = {
+          ...result.user
+        };
+        setUser(authenticatedUser);
         return { success: true };
       } else {
         setUser(null);
-        return { success: false, error: result.error };
+        return { success: false, error: 'Invalid login response' };
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Login error in context:', error);
       setUser(null);
       return { 
         success: false, 
-        error: 'An unexpected error occurred during login' 
+        error: error.message || 'An unexpected error occurred during login' 
       };
     } finally {
       setLoading(false);
@@ -67,7 +90,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const logout = () => {
     setLoading(true);
     try {
-      logoutUser();
+      // Clear all auth data from localStorage
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem('refreshToken');
+      localStorage.removeItem('userProfile');
       setUser(null);
     } catch (error) {
       console.error('Logout error:', error);
@@ -75,13 +101,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setLoading(false);
     }
   };
-
-  const isAuthenticated = user?.isAuthenticated ?? false;
-
+    const isAuthenticated = !!user;
   const value: AuthContextType = {
     user,
     loading,
-    login,
+    login: loginConst,
     logout,
     isAuthenticated,
   };
