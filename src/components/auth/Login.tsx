@@ -1,12 +1,14 @@
 import type { FormProps } from 'antd';
-import { Button, Form, Input, Alert, message } from 'antd';
+import { Button, Form, Input, Alert, message, Typography } from 'antd';
 import type { LoginRequest } from '../../types/Authentication';
 import { useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import useLogin from '../../hooks/useLogin';
 import { useNavigate } from 'react-router';
 
-export default function Login() {
+const { Text, Link } = Typography;
+
+export default function LoginComponent() {
     const { isAuthenticated } = useAuth();
     const navigate = useNavigate();
     const { 
@@ -43,7 +45,7 @@ export default function Login() {
     };
 
     return (
-        <div style={{ maxWidth: 400, margin: '0 auto', padding: '2rem'}}>
+        <div>
             <h2 style={{ textAlign: 'center', marginBottom: '2rem' }}>Login</h2>
             
             {error && (
@@ -109,6 +111,13 @@ export default function Login() {
                         {loading ? 'Logging in...' : 'Login'}
                     </Button>
                 </Form.Item>
+
+                <div style={{ textAlign: 'center', marginTop: '1rem' }}>
+                    <Text>Chưa có tài khoản? </Text>
+                    <Link onClick={() => navigate('/register')} style={{ cursor: 'pointer' }}>
+                        Đăng ký ngay
+                    </Link>
+                </div>
             </Form>
         </div>
     );
