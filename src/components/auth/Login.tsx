@@ -5,11 +5,12 @@ import { useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import useLogin from '../../hooks/useLogin';
 import { useNavigate } from 'react-router';
+import { isAdmin } from '../../utils/roleUtils';
 
 const { Text, Link } = Typography;
 
 export default function LoginComponent() {
-    const { isAuthenticated } = useAuth();
+    const { isAuthenticated, user } = useAuth();
     const navigate = useNavigate();
     const { 
         loginData, 
@@ -23,11 +24,22 @@ export default function LoginComponent() {
     const [form] = Form.useForm();
 
     useEffect(() => {
-        if (isAuthenticated) {
+        if (isAuthenticated && user) {
+            console.log('Logged in user:', user);
+            console.log('User roles:', user.roles);
+            console.log('Is admin?', isAdmin(user));
+            
             message.success('Login successful!');
-            navigate('/dashboard');
+            
+            if (isAdmin(user)) {
+                console.log('Redirecting to admin dashboard');
+                navigate('/admin/dashboard');
+            } else {
+                console.log('Redirecting to user dashboard');
+                navigate('/dashboard');
+            }
         }
-    }, [isAuthenticated, navigate]);
+    }, [isAuthenticated, user, navigate]);
 
     const onFinish: FormProps<LoginRequest>['onFinish'] = async (values) => {
         clearError();
