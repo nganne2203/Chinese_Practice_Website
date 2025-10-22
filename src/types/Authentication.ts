@@ -1,19 +1,12 @@
 import type { ApiResponse } from "./ApiResult";
-import type { User } from "./User";
+import type { User, UserRequest } from "./User";
 
 export type LoginRequest = {
     userName?: string;
     password?: string;
 }
 
-export type RegisterRequest = {
-    userName: string;
-    password: string;
-    firstName?: string;
-    lastName?: string;
-    email: string;
-    birthDate?: string;
-}
+export type RegisterRequest = UserRequest;
 
 export type RefreshTokenRequest = {
     refreshToken: string;
