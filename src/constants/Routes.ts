@@ -3,5 +3,15 @@ export const ROUTE_PATH = {
     LOGIN: '/login',
     REGISTER: '/register',
     DASHBOARD: '/dashboard',
-    NOT_FOUND: '*'
+    NOT_FOUND: '*',
+    ADMIN: '/admin',
+    ADMIN_DASHBOARD: '/admin/dashboard',
+    ADMIN_USERS: '/admin/users',
+    ADMIN_LEVELS: '/admin/levels',
+    ADMIN_UNITS: '/admin/units',
+    ADMIN_LESSONS: '/admin/lessons',
+    ADMIN_VOCABULARIES: '/admin/vocabularies',
+    ADMIN_QUIZZES: '/admin/quizzes',
+    ADMIN_QUESTIONS: '/admin/questions',
+    ADMIN_ROLES_PERMISSIONS: '/admin/roles-permissions',
 }
