@@ -90,8 +90,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const logout = () => {
     setLoading(true);
     try {
-      // Clear all auth data from localStorage
-      localStorage.removeItem('accessToken');
+
+        localStorage.removeItem('accessToken');
       localStorage.removeItem('refreshToken');
       localStorage.removeItem('userProfile');
       setUser(null);
