@@ -6,6 +6,8 @@ export type QuestionRequest = {
     options: string[];
 }
 
-export type QuestionResponse = QuestionRequest;
+export type QuestionResponse = QuestionRequest & {
+    id: string;
+};
 
 export type QuestionApiResponse = ApiResponse<QuestionResponse[]>;

@@ -1,28 +1,25 @@
 import React, { useState } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router';
-import { Layout, Menu, Avatar, Dropdown, Breadcrumb, Button, Typography } from 'antd';
+import { Layout, Menu, Avatar, Dropdown, Button, Typography } from 'antd';
 import type { MenuProps } from 'antd';
 import {
     DashboardOutlined,
-    UserOutlined,
     BookOutlined,
-    FileTextOutlined,
-    QuestionCircleOutlined,
-    SafetyOutlined,
-    AppstoreOutlined,
-    ReadOutlined,
-    TagsOutlined,
+    TrophyOutlined,
+    UserOutlined,
     LogoutOutlined,
     MenuFoldOutlined,
     MenuUnfoldOutlined,
+    BarChartOutlined,
+    SettingOutlined,
 } from '@ant-design/icons';
-import { ROUTE_PATH } from '../constants/Routes';
 import { useAuth } from '../contexts/AuthContext';
+import { ROUTE_PATH } from '../constants/Routes';
 
 const { Header, Sider, Content } = Layout;
 const { Text } = Typography;
 
-const AdminLayout: React.FC = () => {
+const UserLayout: React.FC = () => {
     const [collapsed, setCollapsed] = useState(false);
     const [isMobile, setIsMobile] = useState(false);
     const navigate = useNavigate();
@@ -45,49 +42,29 @@ const AdminLayout: React.FC = () => {
 
     const menuItems: MenuProps['items'] = [
         {
-            key: ROUTE_PATH.ADMIN_DASHBOARD,
+            key: ROUTE_PATH.USER_DASHBOARD,
             icon: <DashboardOutlined />,
             label: 'Dashboard',
         },
         {
-            key: ROUTE_PATH.ADMIN_USERS,
-            icon: <UserOutlined />,
-            label: 'User Management',
-        },
-        {
-            key: ROUTE_PATH.ADMIN_LEVELS,
-            icon: <AppstoreOutlined />,
-            label: 'Level Management',
-        },
-        {
-            key: ROUTE_PATH.ADMIN_UNITS,
+            key: '/app/lessons',
             icon: <BookOutlined />,
-            label: 'Unit Management',
+            label: 'Lessons',
         },
         {
-            key: ROUTE_PATH.ADMIN_LESSONS,
-            icon: <FileTextOutlined />,
-            label: 'Lesson Management',
+            key: '/app/quizzes',
+            icon: <TrophyOutlined />,
+            label: 'Quizzes',
         },
         {
-            key: ROUTE_PATH.ADMIN_VOCABULARIES,
-            icon: <TagsOutlined />,
-            label: 'Vocabulary Management',
+            key: '/app/progress',
+            icon: <BarChartOutlined />,
+            label: 'Progress',
         },
         {
-            key: ROUTE_PATH.ADMIN_QUIZZES,
-            icon: <ReadOutlined />,
-            label: 'Quiz Management',
-        },
-        {
-            key: ROUTE_PATH.ADMIN_QUESTIONS,
-            icon: <QuestionCircleOutlined />,
-            label: 'Question Management',
-        },
-        {
-            key: ROUTE_PATH.ADMIN_ROLES_PERMISSIONS,
-            icon: <SafetyOutlined />,
-            label: 'Role & Permission',
+            key: '/app/profile',
+            icon: <SettingOutlined />,
+            label: 'Profile',
         },
     ];
 
@@ -105,7 +82,7 @@ const AdminLayout: React.FC = () => {
             key: 'profile',
             label: (
                 <div>
-                    <div style={{ fontWeight: 'bold' }}>{user?.userName || 'Admin'}</div>
+                    <div style={{ fontWeight: 'bold' }}>{user?.userName || 'User'}</div>
                     <div style={{ fontSize: '12px', color: '#888' }}>{user?.email || ''}</div>
                 </div>
             ),
@@ -120,29 +97,6 @@ const AdminLayout: React.FC = () => {
             onClick: handleLogout,
         },
     ];
-
-    const generateBreadcrumbItems = () => {
-        const pathSnippets = location.pathname.split('/').filter((i) => i);
-
-        const breadcrumbItems = [
-            {
-                title: 'Admin',
-            },
-        ];
-
-        pathSnippets.forEach((snippet, index) => {
-            if (index > 0) {
-                const url = `/${pathSnippets.slice(0, index + 1).join('/')}`;
-                const menuItem = menuItems.find((item) => item && 'key' in item && item.key === url);
-
-                breadcrumbItems.push({
-                    title: (menuItem && 'label' in menuItem ? menuItem.label : snippet.charAt(0).toUpperCase() + snippet.slice(1)) as string,
-                });
-            }
-        });
-
-        return breadcrumbItems;
-    };
 
     return (
         <Layout style={{ minHeight: '100vh' }}>
@@ -162,6 +116,7 @@ const AdminLayout: React.FC = () => {
                     top: 0,
                     bottom: 0,
                     zIndex: 999,
+                    background: '#001529',
                 }}
             >
                 <div
@@ -219,29 +174,22 @@ const AdminLayout: React.FC = () => {
                                 <Text style={{ marginRight: '12px' }}>
                                     {user?.firstName && user?.lastName
                                         ? `${user.firstName} ${user.lastName}`
-                                        : user?.userName || 'Admin'}
+                                        : user?.userName || 'User'}
                                 </Text>
                             )}
                             <Avatar
-                                style={{ backgroundColor: '#1890ff' }}
+                                style={{ backgroundColor: '#52c41a' }}
                                 icon={<UserOutlined />}
                             >
-                                {user?.userName?.charAt(0).toUpperCase() || 'A'}
+                                {user?.userName?.charAt(0).toUpperCase() || 'U'}
                             </Avatar>
                         </div>
                     </Dropdown>
                 </Header>
 
                 <Content style={{ margin: isMobile ? '16px' : '24px' }}>
-                    <Breadcrumb
-                        items={generateBreadcrumbItems()}
-                        style={{ marginBottom: '16px' }}
-                    />
-
                     <div
                         style={{
-                            padding: isMobile ? 16 : 24,
-                            minHeight: 360,
                             background: '#fff',
                             borderRadius: '8px',
                             overflow: 'auto',
@@ -255,4 +203,4 @@ const AdminLayout: React.FC = () => {
     );
 };
 
-export default AdminLayout;
+export default UserLayout;

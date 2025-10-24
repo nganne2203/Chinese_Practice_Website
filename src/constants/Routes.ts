@@ -3,6 +3,8 @@ export const ROUTE_PATH = {
     LOGIN: '/login',
     REGISTER: '/register',
     DASHBOARD: '/dashboard',
+    USER_DASHBOARD: '/app',
+    UNAUTHORIZED: '/unauthorized',
     NOT_FOUND: '*',
     ADMIN: '/admin',
     ADMIN_DASHBOARD: '/admin/dashboard',

@@ -1,23 +1,20 @@
 import React, { useState } from 'react';
 import {
-    Table,
     Button,
     Space,
     Modal,
     Form,
     Input,
     message,
-    Popconfirm,
     Select,
     Tag,
 } from 'antd';
-import type { ColumnsType } from 'antd/es/table';
-import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import { useLessons } from '../../hooks/useLessons';
 import { QUIZ_API } from '../../api/quiz';
 import { QUESTION_API } from '../../api/question';
 import type { QuestionResponse, QuestionRequest } from '../../types/Question';
 import type { QuizResponse } from '../../types/Quiz';
+import BaseTable from '../Management/BaseTable';
 
 const QuestionManagement: React.FC = () => {
     const [questions, setQuestions] = useState<QuestionResponse[]>([]);
@@ -31,7 +28,7 @@ const QuestionManagement: React.FC = () => {
     const [selectedLessonId, setSelectedLessonId] = useState<string | null>(null);
     const [selectedQuizId, setSelectedQuizId] = useState<string | null>(null);
 
-    // Fetch quizzes when lesson is selected
+    // Fetch quizzes by lesson
     const fetchQuizzesByLesson = async (lessonId: string) => {
         try {
             const data = await QUIZ_API.getQuizByLesson(lessonId);
@@ -41,7 +38,7 @@ const QuestionManagement: React.FC = () => {
         }
     };
 
-    // Fetch questions when quiz is selected
+    // Fetch questions by quiz
     const fetchQuestionsByQuiz = async (quizId: string) => {
         setLoading(true);
         try {
@@ -67,7 +64,8 @@ const QuestionManagement: React.FC = () => {
         fetchQuestionsByQuiz(quizId);
     };
 
-    const columns: ColumnsType<QuestionResponse> = [
+    // Define columns (reusable)
+    const columns = [
         {
             title: 'Question Text',
             dataIndex: 'questionText',
@@ -86,87 +84,60 @@ const QuestionManagement: React.FC = () => {
             key: 'options',
             render: (options: string[]) => (
                 <Space size={[0, 8]} wrap>
-                    {options.map((option, index) => (
-                        <Tag key={index} color="blue">
+                    {options.map((option, i) => (
+                        <Tag key={i} color="blue">
                             {option}
                         </Tag>
                     ))}
                 </Space>
             ),
         },
-        {
-            title: 'Actions',
-            key: 'actions',
-            render: (_, record, index) => (
-                <Space size="small">
-                    <Button
-                        type="link"
-                        icon={<EditOutlined />}
-                        onClick={() => handleEdit(record, index)}
-                    >
-                        Edit
-                    </Button>
-                    <Popconfirm
-                        title="Delete Question"
-                        description="Are you sure you want to delete this question?"
-                        onConfirm={() => handleDelete(index)}
-                        okText="Yes"
-                        cancelText="No"
-                    >
-                        <Button type="link" danger icon={<DeleteOutlined />}>
-                            Delete
-                        </Button>
-                    </Popconfirm>
-                </Space>
-            ),
-        },
     ];
 
-    const handleEdit = (question: QuestionResponse, index: number) => {
-        setEditingQuestion({ ...question, index } as any);
+    const handleEdit = (record: QuestionResponse) => {
+        setEditingQuestion(record);
         form.setFieldsValue({
-            questionText: question.questionText,
-            answer: question.answer,
-            options: question.options,
+            questionText: record.questionText,
+            answer: record.answer,
+            options: record.options,
         });
         setIsModalOpen(true);
+    };
+
+    const handleDelete = async (record: QuestionResponse) => {
+        try {
+            await QUESTION_API.deleteQuestion(record.id);
+            message.success('Question deleted successfully');
+            if (selectedQuizId) fetchQuestionsByQuiz(selectedQuizId);
+        } catch (error: any) {
+            message.error(error.message || 'Failed to delete question');
+        }
     };
 
     const handleSubmit = async (values: QuestionRequest) => {
         setSubmitting(true);
         try {
+            if (!selectedQuizId) {
+                message.warning('Please select a quiz first');
+                return;
+            }
+
             if (editingQuestion) {
-                // Note: Question API doesn't have quiz context, might need adjustment
-                await QUESTION_API.updateQuestion((editingQuestion as any).index.toString(), values);
+                await QUESTION_API.updateQuestion(editingQuestion.id, values);
                 message.success('Question updated successfully');
             } else {
-                await QUESTION_API.createQuestion(values);
+                await QUESTION_API.createQuestion(values, selectedQuizId);
                 message.success('Question created successfully');
             }
+
             setIsModalOpen(false);
             setEditingQuestion(null);
             form.resetFields();
-
-            if (selectedQuizId) {
-                fetchQuestionsByQuiz(selectedQuizId);
-            }
+            fetchQuestionsByQuiz(selectedQuizId);
         } catch (error: any) {
-            message.error(error.message || `Failed to ${editingQuestion ? 'update' : 'create'} question`);
+            message.error(error.message || 'Failed to save question');
         } finally {
             setSubmitting(false);
-        }
-    };
-
-    const handleDelete = async (index: number) => {
-        try {
-            // Note: API expects question ID, but we only have index from quiz detail
-            await QUESTION_API.deleteQuestion(index.toString());
-            message.success('Question deleted successfully');
-            if (selectedQuizId) {
-                fetchQuestionsByQuiz(selectedQuizId);
-            }
-        } catch (error: any) {
-            message.error(error.message || 'Failed to delete question');
         }
     };
 
@@ -178,18 +149,9 @@ const QuestionManagement: React.FC = () => {
 
     return (
         <div>
-            <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <h2 style={{ margin: 0 }}>Question Management</h2>
-                <Button
-                    type="primary"
-                    icon={<PlusOutlined />}
-                    onClick={() => setIsModalOpen(true)}
-                    disabled={!selectedQuizId}
-                >
-                    Create Question
-                </Button>
-            </div>
+            <h2 style={{ marginBottom: 16 }}>Question Management</h2>
 
+            {/* Lesson & Quiz Selector */}
             <Space style={{ marginBottom: 16 }} size="middle">
                 <Select
                     style={{ width: 250 }}
@@ -222,18 +184,20 @@ const QuestionManagement: React.FC = () => {
                 />
             </Space>
 
-            <Table
+            {/* BaseTable for Questions */}
+            <BaseTable<QuestionResponse>
+                title="Questions"
+                data={questions}
                 columns={columns}
-                dataSource={questions}
-                rowKey={(_, index) => `question-${index}`}
                 loading={loading}
+                onCreate={() => setIsModalOpen(true)}
+                onEdit={handleEdit}
+                onDelete={handleDelete}
+                showCreateButton={!!selectedQuizId}
                 pagination={{
                     pageSize: 10,
                     showSizeChanger: true,
-                    showTotal: (total) => `Total ${total} questions`,
-                }}
-                locale={{
-                    emptyText: selectedQuizId ? 'No questions found for this quiz' : 'Please select a lesson and quiz first',
+                    showTotal: (t) => `Total ${t} questions`,
                 }}
             />
 
@@ -245,20 +209,13 @@ const QuestionManagement: React.FC = () => {
                 footer={null}
                 width={700}
             >
-                <Form
-                    form={form}
-                    layout="vertical"
-                    onFinish={handleSubmit}
-                >
+                <Form form={form} layout="vertical" onFinish={handleSubmit}>
                     <Form.Item
                         label="Question Text"
                         name="questionText"
                         rules={[{ required: true, message: 'Please input question text' }]}
                     >
-                        <Input.TextArea
-                            rows={3}
-                            placeholder="Enter question text"
-                        />
+                        <Input.TextArea rows={3} placeholder="Enter question text" />
                     </Form.Item>
 
                     <Form.Item
@@ -288,9 +245,7 @@ const QuestionManagement: React.FC = () => {
 
                     <Form.Item>
                         <Space style={{ width: '100%', justifyContent: 'flex-end' }}>
-                            <Button onClick={handleCancel}>
-                                Cancel
-                            </Button>
+                            <Button onClick={handleCancel}>Cancel</Button>
                             <Button type="primary" htmlType="submit" loading={submitting}>
                                 {editingQuestion ? 'Update' : 'Create'}
                             </Button>

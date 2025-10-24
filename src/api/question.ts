@@ -24,9 +24,9 @@ const getQuestionById = async (id: string): Promise<QuestionResponse> => {
     }
 }
 
-const createQuestion = async (field: QuestionRequest): Promise<QuestionResponse> => {
+const createQuestion = async (field: QuestionRequest, quiId : string): Promise<QuestionResponse> => {
     try {
-        const response = await apiClient.post<QuestionApiResponse>('/api/quizzes/questions', field);
+        const response = await apiClient.post<QuestionApiResponse>(`/api/quizzes/${quiId}/questions`, field);
         if (response.data.code !== 1000 || !response.data.result) {
             throw new Error('Failed to create question: Invalid response code');
         }

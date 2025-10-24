@@ -1,32 +1,37 @@
 import { createBrowserRouter } from "react-router";
 import { ROUTE_PATH } from "../constants/Routes";
 import AdminLayout from "../layouts/AdminLayout";
+import UserLayout from "../layouts/UserLayout";
 import NotFound from "../pages/NotFound";
-import DashboardOverview from "../pages/admin/DashboardOverview";
-import UserManagement from "../pages/admin/UserManagement";
-import LevelManagement from "../pages/admin/LevelManagement";
-import UnitManagement from "../pages/admin/UnitManagement";
-import LessonManagement from "../pages/admin/LessonManagement";
-import VocabularyManagement from "../pages/admin/VocabularyManagement";
-import QuizManagement from "../pages/admin/QuizManagement";
-import QuestionManagement from "../pages/admin/QuestionManagement";
-import RolePermissionManagement from "../pages/admin/RolePermissionManagement";
-import ProtectedMainLayout from "../layouts/ProtectedMainLayout";
+import Dashboard from "../pages/Dashboard";
+import Unauthorized from "../pages/Unauthorized";
+import DashboardOverview from "../components/admin/DashboardOverview";
+import UserManagement from "../components/admin/UserManagement";
+import LevelManagement from "../components/admin/LevelManagement";
+import UnitManagement from "../components/admin/UnitManagement";
+import LessonManagement from "../components/admin/LessonManagement";
+import VocabularyManagement from "../components/admin/VocabularyManagement";
+import QuizManagement from "../components/admin/QuizManagement";
+import QuestionManagement from "../components/admin/QuestionManagement";
+import RolePermissionManagement from "../components/admin/RolePermissionManagement";
+import RoleBasedRedirect, { RequireAdmin, RequireUser } from "../components/auth/RoleBasedRedirect";
 
 export const getProtectedRoutes = createBrowserRouter([
     {
         path: ROUTE_PATH.HOME,
-        element: <ProtectedMainLayout />,
-        children: [
-            {
-                path: ROUTE_PATH.NOT_FOUND,
-                element: <NotFound />
-            }
-        ]
+        element: <RoleBasedRedirect />
+    },
+    {
+        path: ROUTE_PATH.LOGIN,
+        element: <RoleBasedRedirect />
     },
     {
         path: ROUTE_PATH.ADMIN,
-        element: <AdminLayout />,
+        element: (
+            <RequireAdmin>
+                <AdminLayout />
+            </RequireAdmin>
+        ),
         children: [
             {
                 index: true,
@@ -69,5 +74,61 @@ export const getProtectedRoutes = createBrowserRouter([
                 element: <RolePermissionManagement />
             }
         ]
+    },
+    // User Routes
+    {
+        path: ROUTE_PATH.USER_DASHBOARD,
+        element: (
+            <RequireUser>
+                <UserLayout />
+            </RequireUser>
+        ),
+        children: [
+            {
+                index: true,
+                element: <Dashboard />
+            },
+            {
+                path: "lessons",
+                element: <div>Lessons Coming Soon</div>
+            },
+            {
+                path: "quizzes", 
+                element: <div>Quizzes Coming Soon</div>
+            },
+            {
+                path: "progress",
+                element: <div>Progress Coming Soon</div>
+            },
+            {
+                path: "profile",
+                element: <div>Profile Coming Soon</div>
+            }
+        ]
+    },
+    // Legacy dashboard route for backward compatibility
+    {
+        path: ROUTE_PATH.DASHBOARD,
+        element: (
+            <RequireUser>
+                <UserLayout />
+            </RequireUser>
+        ),
+        children: [
+            {
+                index: true,
+                element: <Dashboard />
+            }
+        ]
+    },
+    // Error pages
+    {
+        path: ROUTE_PATH.UNAUTHORIZED,
+        element: <Unauthorized />
+    },
+    // Catch all route
+    {
+        path: "*",
+        element: <NotFound />
     }
 ]);
