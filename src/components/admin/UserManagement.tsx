@@ -1,32 +1,33 @@
-import React, { useState } from 'react';
-import {
-    Table,
-    Button,
-    Space,
-    Modal,
-    Form,
-    Input,
-    message,
-    Popconfirm,
-    Tag,
-    Select,
-} from 'antd';
+import React from 'react';
+import { Input, Select, Tag, Button, Space } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
-import { PlusOutlined, DeleteOutlined, KeyOutlined } from '@ant-design/icons';
-import { useUsers } from '../../hooks/useUsers';
-import { useRoles } from '../../hooks/useRoles';
-import { USER_API } from '../../api/user';
-import type { User, UserRequest, UserUpdateRoleRequest } from '../../types/User';
+import { KeyOutlined } from '@ant-design/icons';
+import { useUserManagement } from '../../hooks/useUserManagement';
+import type { User } from '../../types/User';
+import { formatDate, parseApiDate } from '../../utils/dateFormatUtils';
+import BaseTable from '../Management/BaseTable';
+import BaseModal from '../Management/BaseModal';
+import type { FormField } from '../Management/BaseModal';
 
 const UserManagement: React.FC = () => {
-    const { users, loading, refetch } = useUsers();
-    const { roles } = useRoles();
-    const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-    const [isRoleModalOpen, setIsRoleModalOpen] = useState(false);
-    const [selectedUser, setSelectedUser] = useState<User | null>(null);
-    const [createForm] = Form.useForm();
-    const [roleForm] = Form.useForm();
-    const [submitting, setSubmitting] = useState(false);
+    const {
+        users,
+        roles,
+        loading,
+        submitting,
+        selectedUser,
+        isCreateModalOpen,
+        isRoleModalOpen,
+        createForm,
+        roleForm,
+        openCreateModal,
+        closeCreateModal,
+        handleCreate,
+        openRoleModal,
+        closeRoleModal,
+        handleUpdateRoles,
+        handleDelete,
+    } = useUserManagement();
 
     const columns: ColumnsType<User> = [
         {
@@ -66,8 +67,23 @@ const UserManagement: React.FC = () => {
             title: 'Created At',
             dataIndex: 'createdAt',
             key: 'createdAt',
-            render: (date: string) => new Date(date).toLocaleDateString(),
-            sorter: (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+            render: (date: string) => formatDate(date),
+            sorter: (a, b) => {
+                const dateA = parseApiDate(a.createdAt);
+                const dateB = parseApiDate(b.createdAt);
+                return (dateA?.getTime() || 0) - (dateB?.getTime() || 0);
+            },
+        },
+        {
+            title: 'Updated At',
+            dataIndex: 'updatedAt',
+            key: 'updatedAt',
+            render: (date: string) => formatDate(date),
+            sorter: (a, b) => {
+                const dateA = parseApiDate(a.updatedAt);
+                const dateB = parseApiDate(b.updatedAt);
+                return (dateA?.getTime() || 0) - (dateB?.getTime() || 0);
+            },
         },
         {
             title: 'Actions',
@@ -77,231 +93,106 @@ const UserManagement: React.FC = () => {
                     <Button
                         type="link"
                         icon={<KeyOutlined />}
-                        onClick={() => handleOpenRoleModal(record)}
+                        onClick={() => openRoleModal(record)}
                     >
                         Roles
                     </Button>
-                    <Popconfirm
-                        title="Delete User"
-                        description="Are you sure you want to delete this user?"
-                        onConfirm={() => handleDelete(record.id)}
-                        okText="Yes"
-                        cancelText="No"
-                    >
-                        <Button type="link" danger icon={<DeleteOutlined />}>
-                            Delete
-                        </Button>
-                    </Popconfirm>
                 </Space>
             ),
         },
     ];
 
-    const handleOpenRoleModal = (user: User) => {
-        setSelectedUser(user);
-        roleForm.setFieldsValue({
-            roles: user.roles.map((role) => role.name),
-        });
-        setIsRoleModalOpen(true);
-    };
+    const createUserFormFields: FormField[] = [
+        {
+            name: 'userName',
+            label: 'Username',
+            component: <Input placeholder="Enter username" />,
+            rules: [{ required: true, message: 'Please input username' }],
+        },
+        {
+            name: 'password',
+            label: 'Password',
+            component: <Input.Password placeholder="Enter password" />,
+            rules: [{ required: true, message: 'Please input password' }],
+        },
+        {
+            name: 'email',
+            label: 'Email',
+            component: <Input placeholder="Enter email" />,
+            rules: [
+                { required: true, message: 'Please input email' },
+                { type: 'email', message: 'Please input valid email' },
+            ],
+        },
+        {
+            name: 'firstName',
+            label: 'First Name',
+            component: <Input placeholder="Enter first name" />,
+        },
+        {
+            name: 'lastName',
+            label: 'Last Name',
+            component: <Input placeholder="Enter last name" />,
+        },
+        {
+            name: 'birthDate',
+            label: 'Birth Date',
+            component: <Input type="date" />,
+        },
+    ];
 
-    const handleCreate = async (values: UserRequest) => {
-        setSubmitting(true);
-        try {
-            await USER_API.createUser(values);
-            message.success('User created successfully');
-            setIsCreateModalOpen(false);
-            createForm.resetFields();
-            refetch();
-        } catch (error: any) {
-            message.error(error.message || 'Failed to create user');
-        } finally {
-            setSubmitting(false);
-        }
-    };
-
-    const handleUpdateRoles = async (values: { roles: string[] }) => {
-        if (!selectedUser) return;
-
-        setSubmitting(true);
-        try {
-            const payload: UserUpdateRoleRequest = {
-                roles: values.roles,
-            };
-            await USER_API.updateRoleUser(selectedUser.id, payload);
-            message.success('User roles updated successfully');
-            setIsRoleModalOpen(false);
-            setSelectedUser(null);
-            roleForm.resetFields();
-            refetch();
-        } catch (error: any) {
-            message.error(error.message || 'Failed to update user roles');
-        } finally {
-            setSubmitting(false);
-        }
-    };
-
-    const handleDelete = async (id: string) => {
-        try {
-            await USER_API.deleteUser(id);
-            message.success('User deleted successfully');
-            refetch();
-        } catch (error: any) {
-            message.error(error.message || 'Failed to delete user');
-        }
-    };
+    const roleFormFields: FormField[] = [
+        {
+            name: 'roles',
+            label: 'Roles',
+            component: (
+                <Select
+                    mode="multiple"
+                    placeholder="Select roles"
+                    options={roles.map((role) => ({
+                        label: role.name,
+                        value: role.name,
+                    }))}
+                />
+            ),
+            rules: [{ required: true, message: 'Please select at least one role' }],
+        },
+    ];
 
     return (
         <div>
-            <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <h2 style={{ margin: 0 }}>User Management</h2>
-                <Button
-                    type="primary"
-                    icon={<PlusOutlined />}
-                    onClick={() => setIsCreateModalOpen(true)}
-                >
-                    Create User
-                </Button>
-            </div>
-
-            <Table
+            <BaseTable
+                title="User Management"
+                data={users}
                 columns={columns}
-                dataSource={users}
-                rowKey="id"
                 loading={loading}
-                pagination={{
-                    pageSize: 10,
-                    showSizeChanger: true,
-                    showTotal: (total) => `Total ${total} users`,
-                }}
+                onCreate={openCreateModal}
+                onDelete={handleDelete}
             />
 
-            <Modal
+            <BaseModal
+                visible={isCreateModalOpen}
+                onCancel={closeCreateModal}
+                onSubmit={handleCreate}
                 title="Create New User"
-                open={isCreateModalOpen}
-                onCancel={() => {
-                    setIsCreateModalOpen(false);
-                    createForm.resetFields();
-                }}
-                footer={null}
-                width={600}
-            >
-                <Form
-                    form={createForm}
-                    layout="vertical"
-                    onFinish={handleCreate}
-                >
-                    <Form.Item
-                        label="Username"
-                        name="userName"
-                        rules={[{ required: true, message: 'Please input username' }]}
-                    >
-                        <Input placeholder="Enter username" />
-                    </Form.Item>
+                formFields={createUserFormFields}
+                loading={submitting}
+                form={createForm}
+            />
 
-                    <Form.Item
-                        label="Password"
-                        name="password"
-                        rules={[{ required: true, message: 'Please input password' }]}
-                    >
-                        <Input.Password placeholder="Enter password" />
-                    </Form.Item>
-
-                    <Form.Item
-                        label="Email"
-                        name="email"
-                        rules={[
-                            { required: true, message: 'Please input email' },
-                            { type: 'email', message: 'Please input valid email' },
-                        ]}
-                    >
-                        <Input placeholder="Enter email" />
-                    </Form.Item>
-
-                    <Form.Item
-                        label="First Name"
-                        name="firstName"
-                    >
-                        <Input placeholder="Enter first name" />
-                    </Form.Item>
-
-                    <Form.Item
-                        label="Last Name"
-                        name="lastName"
-                    >
-                        <Input placeholder="Enter last name" />
-                    </Form.Item>
-
-                    <Form.Item
-                        label="Birth Date"
-                        name="birthDate"
-                    >
-                        <Input type="date" />
-                    </Form.Item>
-
-                    <Form.Item>
-                        <Space style={{ width: '100%', justifyContent: 'flex-end' }}>
-                            <Button onClick={() => {
-                                setIsCreateModalOpen(false);
-                                createForm.resetFields();
-                            }}>
-                                Cancel
-                            </Button>
-                            <Button type="primary" htmlType="submit" loading={submitting}>
-                                Create
-                            </Button>
-                        </Space>
-                    </Form.Item>
-                </Form>
-            </Modal>
-
-            <Modal
+            <BaseModal
+                visible={isRoleModalOpen}
+                onCancel={closeRoleModal}
+                onSubmit={handleUpdateRoles}
                 title={`Update Roles - ${selectedUser?.userName}`}
-                open={isRoleModalOpen}
-                onCancel={() => {
-                    setIsRoleModalOpen(false);
-                    setSelectedUser(null);
-                    roleForm.resetFields();
+                formFields={roleFormFields}
+                initialValues={{
+                    roles: selectedUser?.roles.map((role) => role.name),
                 }}
-                footer={null}
+                loading={submitting}
                 width={500}
-            >
-                <Form
-                    form={roleForm}
-                    layout="vertical"
-                    onFinish={handleUpdateRoles}
-                >
-                    <Form.Item
-                        label="Roles"
-                        name="roles"
-                        rules={[{ required: true, message: 'Please select at least one role' }]}
-                    >
-                        <Select
-                            mode="multiple"
-                            placeholder="Select roles"
-                            options={roles.map((role) => ({
-                                label: role.name,
-                                value: role.name,
-                            }))}
-                        />
-                    </Form.Item>
-
-                    <Form.Item>
-                        <Space style={{ width: '100%', justifyContent: 'flex-end' }}>
-                            <Button onClick={() => {
-                                setIsRoleModalOpen(false);
-                                setSelectedUser(null);
-                                roleForm.resetFields();
-                            }}>
-                                Cancel
-                            </Button>
-                            <Button type="primary" htmlType="submit" loading={submitting}>
-                                Update
-                            </Button>
-                        </Space>
-                    </Form.Item>
-                </Form>
-            </Modal>
+                form={roleForm}
+            />
         </div>
     );
 };

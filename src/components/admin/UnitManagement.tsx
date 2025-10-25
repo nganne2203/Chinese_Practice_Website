@@ -1,31 +1,27 @@
-import React, { useState } from 'react';
-import {
-    Table,
-    Button,
-    Space,
-    Modal,
-    Form,
-    Input,
-    InputNumber,
-    message,
-    Popconfirm,
-    Select,
-    Tag,
-} from 'antd';
+import React from 'react';
+import { Input, InputNumber, Select, Tag } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
-import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
-import { useUnits } from '../../hooks/useUnits';
-import { useHskLevels } from '../../hooks/useHskLevels';
-import { UNIT_API } from '../../api/unit';
-import type { UnitResponse, UnitRequest } from '../../types/Unit';
+import { useUnitManagement } from '../../hooks/useUnitManagement';
+import type { UnitResponse } from '../../types/Unit';
+import BaseTable from '../Management/BaseTable';
+import BaseModal from '../Management/BaseModal';
+import type { FormField } from '../Management/BaseModal';
 
 const UnitManagement: React.FC = () => {
-    const { units, loading, refetch } = useUnits();
-    const { levels } = useHskLevels();
-    const [isModalOpen, setIsModalOpen] = useState(false);
-    const [editingUnit, setEditingUnit] = useState<UnitResponse | null>(null);
-    const [form] = Form.useForm();
-    const [submitting, setSubmitting] = useState(false);
+    const {
+        units,
+        levels,
+        loading,
+        submitting,
+        editingUnit,
+        isModalOpen,
+        form,
+        openCreateModal,
+        openEditModal,
+        closeModal,
+        handleSubmit,
+        handleDelete,
+    } = useUnitManagement();
 
     const columns: ColumnsType<UnitResponse> = [
         {
@@ -46,164 +42,71 @@ const UnitManagement: React.FC = () => {
             dataIndex: ['level', 'name'],
             render: (levelName: string) => <Tag color="blue">{levelName}</Tag>,
         },
+    ];
+
+    const formFields: FormField[] = [
         {
-            title: 'Actions',
-            key: 'actions',
-            render: (_, record) => (
-                <Space size="small">
-                    <Button
-                        type="link"
-                        icon={<EditOutlined />}
-                        onClick={() => handleEdit(record)}
-                    >
-                        Edit
-                    </Button>
-                    <Popconfirm
-                        title="Delete Unit"
-                        description="Are you sure you want to delete this unit? This will affect all related lessons."
-                        onConfirm={() => handleDelete(record.id)}
-                        okText="Yes"
-                        cancelText="No"
-                    >
-                        <Button type="link" danger icon={<DeleteOutlined />}>
-                            Delete
-                        </Button>
-                    </Popconfirm>
-                </Space>
+            name: 'title',
+            label: 'Title',
+            component: <Input placeholder="Enter unit title" />,
+            rules: [{ required: true, message: 'Please input unit title' }],
+        },
+        {
+            name: 'unitNumber',
+            label: 'Unit Number',
+            component: (
+                <InputNumber
+                    min={1}
+                    style={{ width: '100%' }}
+                    placeholder="Enter unit number"
+                />
             ),
+            rules: [{ required: true, message: 'Please input unit number' }],
+        },
+        {
+            name: 'levelId',
+            label: 'HSK Level',
+            component: (
+                <Select
+                    placeholder="Select HSK level"
+                    options={levels.map((level) => ({
+                        label: level.name,
+                        value: level.id,
+                    }))}
+                />
+            ),
+            rules: [{ required: true, message: 'Please select HSK level' }],
         },
     ];
 
-    const handleEdit = (unit: UnitResponse) => {
-        setEditingUnit(unit);
-        form.setFieldsValue({
-            title: unit.title,
-            unitNumber: unit.unitNumber,
-            levelId: unit.level.id,
-        });
-        setIsModalOpen(true);
-    };
-
-    const handleCreate = async (values: UnitRequest) => {
-        setSubmitting(true);
-        try {
-            if (editingUnit) {
-                await UNIT_API.updateUnit(editingUnit.id, values);
-                message.success('Unit updated successfully');
-            } else {
-                await UNIT_API.createUnit(values);
-                message.success('Unit created successfully');
-            }
-            setIsModalOpen(false);
-            setEditingUnit(null);
-            form.resetFields();
-            refetch();
-        } catch (error: any) {
-            message.error(error.message || `Failed to ${editingUnit ? 'update' : 'create'} unit`);
-        } finally {
-            setSubmitting(false);
-        }
-    };
-
-    const handleDelete = async (id: string) => {
-        try {
-            await UNIT_API.deleteUnit(id);
-            message.success('Unit deleted successfully');
-            refetch();
-        } catch (error: any) {
-            message.error(error.message || 'Failed to delete unit');
-        }
-    };
-
-    const handleCancel = () => {
-        setIsModalOpen(false);
-        setEditingUnit(null);
-        form.resetFields();
-    };
+    const modalInitialValues = editingUnit ? {
+        title: editingUnit.title,
+        unitNumber: editingUnit.unitNumber,
+        levelId: editingUnit.level.id,
+    } : undefined;
 
     return (
         <div>
-            <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <h2 style={{ margin: 0 }}>Unit Management</h2>
-                <Button
-                    type="primary"
-                    icon={<PlusOutlined />}
-                    onClick={() => setIsModalOpen(true)}
-                >
-                    Create Unit
-                </Button>
-            </div>
-
-            <Table
+            <BaseTable
+                title="Unit Management"
+                data={units}
                 columns={columns}
-                dataSource={units}
-                rowKey="id"
                 loading={loading}
-                pagination={{
-                    pageSize: 10,
-                    showSizeChanger: true,
-                    showTotal: (total) => `Total ${total} units`,
-                }}
+                onCreate={openCreateModal}
+                onEdit={openEditModal}
+                onDelete={handleDelete}
             />
 
-            <Modal
+            <BaseModal
+                visible={isModalOpen}
+                onCancel={closeModal}
+                onSubmit={handleSubmit}
                 title={editingUnit ? 'Edit Unit' : 'Create New Unit'}
-                open={isModalOpen}
-                onCancel={handleCancel}
-                footer={null}
-                width={600}
-            >
-                <Form
-                    form={form}
-                    layout="vertical"
-                    onFinish={handleCreate}
-                >
-                    <Form.Item
-                        label="Title"
-                        name="title"
-                        rules={[{ required: true, message: 'Please input unit title' }]}
-                    >
-                        <Input placeholder="Enter unit title" />
-                    </Form.Item>
-
-                    <Form.Item
-                        label="Unit Number"
-                        name="unitNumber"
-                        rules={[{ required: true, message: 'Please input unit number' }]}
-                    >
-                        <InputNumber
-                            min={1}
-                            style={{ width: '100%' }}
-                            placeholder="Enter unit number"
-                        />
-                    </Form.Item>
-
-                    <Form.Item
-                        label="HSK Level"
-                        name="levelId"
-                        rules={[{ required: true, message: 'Please select HSK level' }]}
-                    >
-                        <Select
-                            placeholder="Select HSK level"
-                            options={levels.map((level) => ({
-                                label: level.name,
-                                value: level.id,
-                            }))}
-                        />
-                    </Form.Item>
-
-                    <Form.Item>
-                        <Space style={{ width: '100%', justifyContent: 'flex-end' }}>
-                            <Button onClick={handleCancel}>
-                                Cancel
-                            </Button>
-                            <Button type="primary" htmlType="submit" loading={submitting}>
-                                {editingUnit ? 'Update' : 'Create'}
-                            </Button>
-                        </Space>
-                    </Form.Item>
-                </Form>
-            </Modal>
+                formFields={formFields}
+                initialValues={modalInitialValues}
+                loading={submitting}
+                form={form}
+            />
         </div>
     );
 };

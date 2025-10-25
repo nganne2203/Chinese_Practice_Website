@@ -1,53 +1,29 @@
-import React, { useState } from 'react';
-import {
-    Table,
-    Button,
-    Space,
-    Modal,
-    Form,
-    Input,
-    message,
-    Popconfirm,
-    Select,
-    Tag,
-} from 'antd';
+import React from 'react';
+import { Input, Select, Tag } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
-import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
-import { useLessons } from '../../hooks/useLessons';
-import { QUIZ_API } from '../../api/quiz';
-import type { QuizResponse, QuizRequest } from '../../types/Quiz';
-import { useAuth } from '../../contexts/AuthContext';
+import { useQuizManagement } from '../../hooks/useQuizManagement';
+import type { QuizResponse } from '../../types/Quiz';
+import BaseTable from '../Management/BaseTable';
+import BaseModal from '../Management/BaseModal';
+import type { FormField } from '../Management/BaseModal';
 
 const QuizManagement: React.FC = () => {
-    const [quizzes, setQuizzes] = useState<QuizResponse[]>([]);
-    const [loading, setLoading] = useState(false);
-    const { lessons } = useLessons();
-    const { user } = useAuth();
-    const [isModalOpen, setIsModalOpen] = useState(false);
-    const [editingQuiz, setEditingQuiz] = useState<QuizResponse | null>(null);
-    const [form] = Form.useForm();
-    const [submitting, setSubmitting] = useState(false);
-
-    // TODO: There's no API to get all quizzes, only by lesson
-    // For now, we'll show a message to select a lesson first
-    const [selectedLessonId, setSelectedLessonId] = useState<string | null>(null);
-
-    const fetchQuizzesByLesson = async (lessonId: string) => {
-        setLoading(true);
-        try {
-            const data = await QUIZ_API.getQuizByLesson(lessonId);
-            setQuizzes(data);
-        } catch (error: any) {
-            message.error(error.message || 'Failed to fetch quizzes');
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const handleLessonChange = (lessonId: string) => {
-        setSelectedLessonId(lessonId);
-        fetchQuizzesByLesson(lessonId);
-    };
+    const {
+        quizzes,
+        lessons,
+        loading,
+        submitting,
+        editingQuiz,
+        selectedLessonId,
+        isModalOpen,
+        form,
+        handleLessonChange,
+        openCreateModal,
+        openEditModal,
+        closeModal,
+        handleSubmit,
+        handleDelete,
+    } = useQuizManagement();
 
     const columns: ColumnsType<QuizResponse> = [
         {
@@ -72,111 +48,60 @@ const QuizManagement: React.FC = () => {
             key: 'createdBy',
             render: (_, record) => record.createdBy.userName,
         },
+    ];
+
+    const formFields: FormField[] = [
         {
-            title: 'Actions',
-            key: 'actions',
-            render: (_, record) => (
-                <Space size="small">
-                    <Button
-                        type="link"
-                        icon={<EditOutlined />}
-                        onClick={() => handleEdit(record)}
-                    >
-                        Edit
-                    </Button>
-                    <Popconfirm
-                        title="Delete Quiz"
-                        description="Are you sure you want to delete this quiz? This will delete all associated questions."
-                        onConfirm={() => handleDelete(record.id)}
-                        okText="Yes"
-                        cancelText="No"
-                    >
-                        <Button type="link" danger icon={<DeleteOutlined />}>
-                            Delete
-                        </Button>
-                    </Popconfirm>
-                </Space>
+            name: 'title',
+            label: 'Title',
+            component: <Input placeholder="Enter quiz title" />,
+            rules: [{ required: true, message: 'Please input quiz title' }],
+        },
+        {
+            name: 'type',
+            label: 'Type',
+            component: (
+                <Select
+                    placeholder="Select quiz type"
+                    options={[
+                        { label: 'Multiple Choice', value: 'MULTIPLE_CHOICE' },
+                        { label: 'Fill in the Blank', value: 'FILL_IN_BLANK' },
+                        { label: 'Matching', value: 'MATCHING' },
+                    ]}
+                />
             ),
+            rules: [{ required: true, message: 'Please select quiz type' }],
+        },
+        {
+            name: 'lessonId',
+            label: 'Lesson',
+            component: (
+                <Select
+                    placeholder="Select lesson"
+                    options={lessons.map((lesson) => ({
+                        label: `${lesson.title} (${lesson.unit.title})`,
+                        value: lesson.id,
+                    }))}
+                    showSearch
+                    filterOption={(input, option) =>
+                        (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+                    }
+                />
+            ),
+            rules: [{ required: true, message: 'Please select lesson' }],
         },
     ];
 
-    const handleEdit = (quiz: QuizResponse) => {
-        setEditingQuiz(quiz);
-        form.setFieldsValue({
-            title: quiz.title,
-            type: quiz.type,
-            lessonId: quiz.lesson.id,
-        });
-        setIsModalOpen(true);
-    };
-
-    const handleSubmit = async (values: Omit<QuizRequest, 'createdById'>) => {
-        if (!user) {
-            message.error('User not authenticated');
-            return;
-        }
-
-        setSubmitting(true);
-        try {
-            const payload: QuizRequest = {
-                ...values,
-                createdById: user.id,
-            };
-
-            if (editingQuiz) {
-                await QUIZ_API.updateQuiz(editingQuiz.id, payload);
-                message.success('Quiz updated successfully');
-            } else {
-                await QUIZ_API.createQuiz(payload);
-                message.success('Quiz created successfully');
-            }
-            setIsModalOpen(false);
-            setEditingQuiz(null);
-            form.resetFields();
-
-            if (selectedLessonId) {
-                fetchQuizzesByLesson(selectedLessonId);
-            }
-        } catch (error: any) {
-            message.error(error.message || `Failed to ${editingQuiz ? 'update' : 'create'} quiz`);
-        } finally {
-            setSubmitting(false);
-        }
-    };
-
-    const handleDelete = async (id: string) => {
-        try {
-            await QUIZ_API.deleteQuiz(id);
-            message.success('Quiz deleted successfully');
-            if (selectedLessonId) {
-                fetchQuizzesByLesson(selectedLessonId);
-            }
-        } catch (error: any) {
-            message.error(error.message || 'Failed to delete quiz');
-        }
-    };
-
-    const handleCancel = () => {
-        setIsModalOpen(false);
-        setEditingQuiz(null);
-        form.resetFields();
-    };
+    const modalInitialValues = editingQuiz ? {
+        title: editingQuiz.title,
+        type: editingQuiz.type,
+        lessonId: editingQuiz.lesson.id,
+    } : { lessonId: selectedLessonId };
 
     return (
         <div>
-            <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <h2 style={{ margin: 0 }}>Quiz Management</h2>
-                <Button
-                    type="primary"
-                    icon={<PlusOutlined />}
-                    onClick={() => setIsModalOpen(true)}
-                    disabled={!selectedLessonId}
-                >
-                    Create Quiz
-                </Button>
-            </div>
-
             <div style={{ marginBottom: 16 }}>
+                <h2 style={{ margin: 0, marginBottom: 16 }}>Quiz Management</h2>
                 <Select
                     style={{ width: 300 }}
                     placeholder="Select a lesson to view quizzes"
@@ -193,87 +118,32 @@ const QuizManagement: React.FC = () => {
                 />
             </div>
 
-            <Table
+            <BaseTable
+                title="Quizzes"
+                data={quizzes}
                 columns={columns}
-                dataSource={quizzes}
-                rowKey="id"
                 loading={loading}
+                onCreate={openCreateModal}
+                onEdit={openEditModal}
+                onDelete={handleDelete}
+                showCreateButton={!!selectedLessonId}
                 pagination={{
                     pageSize: 10,
                     showSizeChanger: true,
                     showTotal: (total) => `Total ${total} quizzes`,
                 }}
-                locale={{
-                    emptyText: selectedLessonId ? 'No quizzes found for this lesson' : 'Please select a lesson first',
-                }}
             />
 
-            <Modal
+            <BaseModal
+                visible={isModalOpen}
+                onCancel={closeModal}
+                onSubmit={handleSubmit}
                 title={editingQuiz ? 'Edit Quiz' : 'Create New Quiz'}
-                open={isModalOpen}
-                onCancel={handleCancel}
-                footer={null}
-                width={600}
-            >
-                <Form
-                    form={form}
-                    layout="vertical"
-                    onFinish={handleSubmit}
-                    initialValues={{ lessonId: selectedLessonId }}
-                >
-                    <Form.Item
-                        label="Title"
-                        name="title"
-                        rules={[{ required: true, message: 'Please input quiz title' }]}
-                    >
-                        <Input placeholder="Enter quiz title" />
-                    </Form.Item>
-
-                    <Form.Item
-                        label="Type"
-                        name="type"
-                        rules={[{ required: true, message: 'Please select quiz type' }]}
-                    >
-                        <Select
-                            placeholder="Select quiz type"
-                            options={[
-                                { label: 'Multiple Choice', value: 'MULTIPLE_CHOICE' },
-                                { label: 'Fill in the Blank', value: 'FILL_IN_BLANK' },
-                                { label: 'Matching', value: 'MATCHING' },
-                            ]}
-                        />
-                    </Form.Item>
-
-                    <Form.Item
-                        label="Lesson"
-                        name="lessonId"
-                        rules={[{ required: true, message: 'Please select lesson' }]}
-                    >
-                        <Select
-                            placeholder="Select lesson"
-                            options={lessons.map((lesson) => ({
-                                label: `${lesson.title} (${lesson.unit.title})`,
-                                value: lesson.id,
-                            }))}
-                            showSearch
-                            filterOption={(input, option) =>
-                                (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
-                            }
-                        />
-                    </Form.Item>
-
-                    <Form.Item>
-                        <Space style={{ width: '100%', justifyContent: 'flex-end' }}>
-                            <Button onClick={handleCancel}>
-                                Cancel
-                            </Button>
-                            <Button type="primary" htmlType="submit" loading={submitting}>
-                                {editingQuiz ? 'Update' : 'Create'}
-                            </Button>
-                        </Space>
-                    </Form.Item>
-                </Form>
-            </Modal>
+                formFields={formFields}
+                initialValues={modalInitialValues}
+                loading={submitting}
+                form={form}
+            />
         </div>
     );
 };

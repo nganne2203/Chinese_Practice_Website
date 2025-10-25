@@ -1,45 +1,48 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
-    Table,
-    Button,
-    Space,
-    Modal,
-    Form,
     Input,
-    message,
-    Popconfirm,
     Select,
     Tag,
+    Space,
     Row,
     Col,
     Card,
+    Table,
+    Button,
+    Popconfirm,
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { PlusOutlined, DeleteOutlined } from '@ant-design/icons';
-import { useRoles } from '../../hooks/useRoles';
-import { usePermissions } from '../../hooks/usePermissions';
-import { ROLE_API } from '../../api/role';
-import { PERMISSION_API } from '../../api/permission';
-import type { RoleResponse, RoleRequest } from '../../types/Role';
-import type { PermissionResponse, PermissionRequest } from '../../types/Permission';
+import { useRolePermissionManagement } from '../../hooks/useRolePermissionManagement';
+import type { RoleResponse } from '../../types/Role';
+import type { PermissionResponse } from '../../types/Permission';
+import BaseModal from '../Management/BaseModal';
+import type { FormField } from '../Management/BaseModal';
 
 const { TextArea } = Input;
 
 const RolePermissionManagement: React.FC = () => {
-    const { roles, loading: rolesLoading, refetch: refetchRoles } = useRoles();
-    const { permissions, loading: permissionsLoading, refetch: refetchPermissions } = usePermissions();
+    const {
+        roles,
+        permissions,
+        rolesLoading,
+        permissionsLoading,
+        isRoleModalOpen,
+        submittingRole,
+        roleForm,
+        isPermissionModalOpen,
+        submittingPermission,
+        permissionForm,
+        openRoleModal,
+        closeRoleModal,
+        handleCreateRole,
+        handleDeleteRole,
+        openPermissionModal,
+        closePermissionModal,
+        handleCreatePermission,
+        handleDeletePermission,
+    } = useRolePermissionManagement();
 
-    // Role modal states
-    const [isRoleModalOpen, setIsRoleModalOpen] = useState(false);
-    const [roleForm] = Form.useForm();
-    const [submittingRole, setSubmittingRole] = useState(false);
-
-    // Permission modal states
-    const [isPermissionModalOpen, setIsPermissionModalOpen] = useState(false);
-    const [permissionForm] = Form.useForm();
-    const [submittingPermission, setSubmittingPermission] = useState(false);
-
-    // Role columns
     const roleColumns: ColumnsType<RoleResponse> = [
         {
             title: 'Role Name',
@@ -68,25 +71,6 @@ const RolePermissionManagement: React.FC = () => {
                 </Space>
             ),
         },
-        {
-            title: 'Actions',
-            key: 'actions',
-            render: (_, record) => (
-                <Space size="small">
-                    <Popconfirm
-                        title="Delete Role"
-                        description="Are you sure you want to delete this role? Users with this role will lose access."
-                        onConfirm={() => handleDeleteRole(record.name)}
-                        okText="Yes"
-                        cancelText="No"
-                    >
-                        <Button type="link" danger icon={<DeleteOutlined />}>
-                            Delete
-                        </Button>
-                    </Popconfirm>
-                </Space>
-            ),
-        },
     ];
 
     // Permission columns
@@ -104,78 +88,70 @@ const RolePermissionManagement: React.FC = () => {
             ellipsis: true,
             render: (desc: string) => desc || '-',
         },
+    ];
+
+    const roleFormFields: FormField[] = [
         {
-            title: 'Actions',
-            key: 'actions',
-            render: (_, record) => (
-                <Space size="small">
-                    <Popconfirm
-                        title="Delete Permission"
-                        description="Are you sure you want to delete this permission? This will affect all roles using it."
-                        onConfirm={() => handleDeletePermission(record.name)}
-                        okText="Yes"
-                        cancelText="No"
-                    >
-                        <Button type="link" danger icon={<DeleteOutlined />}>
-                            Delete
-                        </Button>
-                    </Popconfirm>
-                </Space>
+            name: 'name',
+            label: 'Role Name',
+            component: <Input placeholder="e.g., ADMIN" />,
+            rules: [
+                { required: true, message: 'Please input role name' },
+                { pattern: /^[A-Z_]+$/, message: 'Role name should be uppercase with underscores (e.g., ADMIN, CONTENT_MANAGER)' },
+            ],
+        },
+        {
+            name: 'description',
+            label: 'Description',
+            component: (
+                <TextArea
+                    rows={3}
+                    placeholder="Enter role description (optional)"
+                />
             ),
+        },
+        {
+            name: 'permissions',
+            label: 'Permissions',
+            component: (
+                <Select
+                    mode="multiple"
+                    placeholder="Select permissions"
+                    options={permissions.map((perm) => ({
+                        label: `${perm.name}${perm.description ? ` - ${perm.description}` : ''}`,
+                        value: perm.name,
+                    }))}
+                    showSearch
+                    filterOption={(input, option) =>
+                        (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+                    }
+                />
+            ),
+            rules: [{ required: true, message: 'Please select at least one permission' }],
         },
     ];
 
-    // Role handlers
-    const handleCreateRole = async (values: RoleRequest) => {
-        setSubmittingRole(true);
-        try {
-            await ROLE_API.createRole(values);
-            message.success('Role created successfully');
-            setIsRoleModalOpen(false);
-            roleForm.resetFields();
-            refetchRoles();
-        } catch (error: any) {
-            message.error(error.message || 'Failed to create role');
-        } finally {
-            setSubmittingRole(false);
-        }
-    };
-
-    const handleDeleteRole = async (name: string) => {
-        try {
-            await ROLE_API.deleteRole(name);
-            message.success('Role deleted successfully');
-            refetchRoles();
-        } catch (error: any) {
-            message.error(error.message || 'Failed to delete role');
-        }
-    };
-
-    // Permission handlers
-    const handleCreatePermission = async (values: PermissionRequest) => {
-        setSubmittingPermission(true);
-        try {
-            await PERMISSION_API.createPermission(values);
-            message.success('Permission created successfully');
-            setIsPermissionModalOpen(false);
-            permissionForm.resetFields();
-            refetchPermissions();
-        } catch (error: any) {
-            message.error(error.message || 'Failed to create permission');
-        } finally {
-            setSubmittingPermission(false);
-        }
-    };
-
-    const handleDeletePermission = async (name: string) => {
-        try {
-            await PERMISSION_API.deletePermission(name);
-            message.success('Permission deleted successfully');
-            refetchPermissions();
-        } catch (error: any) {
-            message.error(error.message || 'Failed to delete permission');
-        }
-    };
+    const permissionFormFields: FormField[] = [
+        {
+            name: 'name',
+            label: 'Permission Name',
+            component: <Input placeholder="e.g., READ_USER" />,
+            rules: [
+                { required: true, message: 'Please input permission name' },
+                { pattern: /^[A-Z_]+$/, message: 'Permission name should be uppercase with underscores (e.g., READ_USER, WRITE_CONTENT)' },
+            ],
+        },
+        {
+            name: 'description',
+            label: 'Description',
+            component: (
+                <TextArea
+                    rows={3}
+                    placeholder="Enter permission description (optional)"
+                />
+            ),
+        },
+    ];
 
     return (
         <div>
@@ -190,14 +166,33 @@ const RolePermissionManagement: React.FC = () => {
                             <Button
                                 type="primary"
                                 icon={<PlusOutlined />}
-                                onClick={() => setIsRoleModalOpen(true)}
+                                onClick={openRoleModal}
                             >
                                 Create Role
                             </Button>
                         }
                     >
                         <Table
-                            columns={roleColumns}
+                            columns={[
+                                ...roleColumns,
+                                {
+                                    title: 'Actions',
+                                    key: 'actions',
+                                    render: (_, record) => (
+                                        <Popconfirm
+                                            title="Delete Role"
+                                            description="Are you sure you want to delete this role? Users with this role will lose access."
+                                            onConfirm={() => handleDeleteRole(record)}
+                                            okText="Yes"
+                                            cancelText="No"
+                                        >
+                                            <Button type="link" danger icon={<DeleteOutlined />}>
+                                                Delete
+                                            </Button>
+                                        </Popconfirm>
+                                    ),
+                                },
+                            ]}
                             dataSource={roles}
                             rowKey="name"
                             loading={rolesLoading}
@@ -218,14 +213,33 @@ const RolePermissionManagement: React.FC = () => {
                             <Button
                                 type="primary"
                                 icon={<PlusOutlined />}
-                                onClick={() => setIsPermissionModalOpen(true)}
+                                onClick={openPermissionModal}
                             >
                                 Create Permission
                             </Button>
                         }
                     >
                         <Table
-                            columns={permissionColumns}
+                            columns={[
+                                ...permissionColumns,
+                                {
+                                    title: 'Actions',
+                                    key: 'actions',
+                                    render: (_, record) => (
+                                        <Popconfirm
+                                            title="Delete Permission"
+                                            description="Are you sure you want to delete this permission? This will affect all roles using it."
+                                            onConfirm={() => handleDeletePermission(record)}
+                                            okText="Yes"
+                                            cancelText="No"
+                                        >
+                                            <Button type="link" danger icon={<DeleteOutlined />}>
+                                                Delete
+                                            </Button>
+                                        </Popconfirm>
+                                    ),
+                                },
+                            ]}
                             dataSource={permissions}
                             rowKey="name"
                             loading={permissionsLoading}
@@ -240,129 +254,25 @@ const RolePermissionManagement: React.FC = () => {
             </Row>
 
             {/* Create Role Modal */}
-            <Modal
+            <BaseModal
+                visible={isRoleModalOpen}
+                onCancel={closeRoleModal}
+                onSubmit={handleCreateRole}
                 title="Create New Role"
-                open={isRoleModalOpen}
-                onCancel={() => {
-                    setIsRoleModalOpen(false);
-                    roleForm.resetFields();
-                }}
-                footer={null}
-                width={600}
-            >
-                <Form
-                    form={roleForm}
-                    layout="vertical"
-                    onFinish={handleCreateRole}
-                >
-                    <Form.Item
-                        label="Role Name"
-                        name="name"
-                        rules={[
-                            { required: true, message: 'Please input role name' },
-                            { pattern: /^[A-Z_]+$/, message: 'Role name should be uppercase with underscores (e.g., ADMIN, CONTENT_MANAGER)' },
-                        ]}
-                    >
-                        <Input placeholder="e.g., ADMIN" />
-                    </Form.Item>
+                formFields={roleFormFields}
+                loading={submittingRole}
+                form={roleForm}
+            />
 
-                    <Form.Item
-                        label="Description"
-                        name="description"
-                    >
-                        <TextArea
-                            rows={3}
-                            placeholder="Enter role description (optional)"
-                        />
-                    </Form.Item>
-
-                    <Form.Item
-                        label="Permissions"
-                        name="permissions"
-                        rules={[{ required: true, message: 'Please select at least one permission' }]}
-                    >
-                        <Select
-                            mode="multiple"
-                            placeholder="Select permissions"
-                            options={permissions.map((perm) => ({
-                                label: `${perm.name}${perm.description ? ` - ${perm.description}` : ''}`,
-                                value: perm.name,
-                            }))}
-                            showSearch
-                            filterOption={(input, option) =>
-                                (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
-                            }
-                        />
-                    </Form.Item>
-
-                    <Form.Item>
-                        <Space style={{ width: '100%', justifyContent: 'flex-end' }}>
-                            <Button onClick={() => {
-                                setIsRoleModalOpen(false);
-                                roleForm.resetFields();
-                            }}>
-                                Cancel
-                            </Button>
-                            <Button type="primary" htmlType="submit" loading={submittingRole}>
-                                Create
-                            </Button>
-                        </Space>
-                    </Form.Item>
-                </Form>
-            </Modal>
-
-            {/* Create Permission Modal */}
-            <Modal
+            <BaseModal
+                visible={isPermissionModalOpen}
+                onCancel={closePermissionModal}
+                onSubmit={handleCreatePermission}
                 title="Create New Permission"
-                open={isPermissionModalOpen}
-                onCancel={() => {
-                    setIsPermissionModalOpen(false);
-                    permissionForm.resetFields();
-                }}
-                footer={null}
-                width={600}
-            >
-                <Form
-                    form={permissionForm}
-                    layout="vertical"
-                    onFinish={handleCreatePermission}
-                >
-                    <Form.Item
-                        label="Permission Name"
-                        name="name"
-                        rules={[
-                            { required: true, message: 'Please input permission name' },
-                            { pattern: /^[A-Z_]+$/, message: 'Permission name should be uppercase with underscores (e.g., READ_USER, WRITE_CONTENT)' },
-                        ]}
-                    >
-                        <Input placeholder="e.g., READ_USER" />
-                    </Form.Item>
-
-                    <Form.Item
-                        label="Description"
-                        name="description"
-                    >
-                        <TextArea
-                            rows={3}
-                            placeholder="Enter permission description (optional)"
-                        />
-                    </Form.Item>
-
-                    <Form.Item>
-                        <Space style={{ width: '100%', justifyContent: 'flex-end' }}>
-                            <Button onClick={() => {
-                                setIsPermissionModalOpen(false);
-                                permissionForm.resetFields();
-                            }}>
-                                Cancel
-                            </Button>
-                            <Button type="primary" htmlType="submit" loading={submittingPermission}>
-                                Create
-                            </Button>
-                        </Space>
-                    </Form.Item>
-                </Form>
-            </Modal>
+                formFields={permissionFormFields}
+                loading={submittingPermission}
+                form={permissionForm}
+            />
         </div>
     );
 };

@@ -1,32 +1,29 @@
-import React, { useState } from 'react';
-import {
-    Table,
-    Button,
-    Space,
-    Modal,
-    Form,
-    Input,
-    message,
-    Popconfirm,
-    Select,
-    Tag,
-} from 'antd';
+import React from 'react';
+import { Input, Select, Tag } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
-import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
-import { useVocabularies } from '../../hooks/useVocabularies';
-import { useLessons } from '../../hooks/useLessons';
-import { VOCABULARY__API } from '../../api/vocabulary';
-import type { VocabularyResponse, VocabularyRequest } from '../../types/Vocabulary';
+import { useVocabularyManagement } from '../../hooks/useVocabularyManagement';
+import type { VocabularyResponse } from '../../types/Vocabulary';
+import BaseTable from '../Management/BaseTable';
+import BaseModal from '../Management/BaseModal';
+import type { FormField } from '../Management/BaseModal';
 
 const { TextArea } = Input;
 
 const VocabularyManagement: React.FC = () => {
-    const { vocabularies, loading, refetch } = useVocabularies();
-    const { lessons } = useLessons();
-    const [isModalOpen, setIsModalOpen] = useState(false);
-    const [editingVocab, setEditingVocab] = useState<VocabularyResponse | null>(null);
-    const [form] = Form.useForm();
-    const [submitting, setSubmitting] = useState(false);
+    const {
+        vocabularies,
+        lessons,
+        loading,
+        submitting,
+        editingVocab,
+        isModalOpen,
+        form,
+        openCreateModal,
+        openEditModal,
+        closeModal,
+        handleSubmit,
+        handleDelete,
+    } = useVocabularyManagement();
 
     const columns: ColumnsType<VocabularyResponse> = [
         {
@@ -61,185 +58,87 @@ const VocabularyManagement: React.FC = () => {
                 </Tag>
             ),
         },
+    ];
+
+    const formFields: FormField[] = [
         {
-            title: 'Actions',
-            key: 'actions',
-            render: (_, record) => (
-                <Space size="small">
-                    <Button
-                        type="link"
-                        icon={<EditOutlined />}
-                        onClick={() => handleEdit(record)}
-                    >
-                        Edit
-                    </Button>
-                    <Popconfirm
-                        title="Delete Vocabulary"
-                        description="Are you sure you want to delete this vocabulary?"
-                        onConfirm={() => handleDelete(record.id)}
-                        okText="Yes"
-                        cancelText="No"
-                    >
-                        <Button type="link" danger icon={<DeleteOutlined />}>
-                            Delete
-                        </Button>
-                    </Popconfirm>
-                </Space>
+            name: 'hanzi',
+            label: 'Hanzi (Chinese Characters)',
+            component: <Input placeholder="Enter Chinese characters" />,
+            rules: [{ required: true, message: 'Please input hanzi' }],
+        },
+        {
+            name: 'pinyin',
+            label: 'Pinyin',
+            component: <Input placeholder="Enter pinyin" />,
+            rules: [{ required: true, message: 'Please input pinyin' }],
+        },
+        {
+            name: 'meaning',
+            label: 'Meaning',
+            component: <Input placeholder="Enter English meaning" />,
+            rules: [{ required: true, message: 'Please input meaning' }],
+        },
+        {
+            name: 'exampleSentence',
+            label: 'Example Sentence',
+            component: (
+                <TextArea
+                    rows={3}
+                    placeholder="Enter example sentence (optional)"
+                />
             ),
+        },
+        {
+            name: 'lessonId',
+            label: 'Lesson',
+            component: (
+                <Select
+                    placeholder="Select lesson"
+                    options={lessons.map((lesson) => ({
+                        label: `${lesson.title} (${lesson.unit.title})`,
+                        value: lesson.id,
+                    }))}
+                    showSearch
+                    filterOption={(input, option) =>
+                        (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+                    }
+                />
+            ),
+            rules: [{ required: true, message: 'Please select lesson' }],
         },
     ];
 
-    const handleEdit = (vocab: VocabularyResponse) => {
-        setEditingVocab(vocab);
-        form.setFieldsValue({
-            hanzi: vocab.hanzi,
-            pinyin: vocab.pinyin,
-            meaning: vocab.meaning,
-            exampleSentence: vocab.exampleSentence,
-            lessonId: vocab.lesson.id,
-        });
-        setIsModalOpen(true);
-    };
-
-    const handleSubmit = async (values: VocabularyRequest) => {
-        setSubmitting(true);
-        try {
-            if (editingVocab) {
-                await VOCABULARY__API.updateVocabulary(editingVocab.id, values);
-                message.success('Vocabulary updated successfully');
-            } else {
-                await VOCABULARY__API.createVocabulary(values);
-                message.success('Vocabulary created successfully');
-            }
-            setIsModalOpen(false);
-            setEditingVocab(null);
-            form.resetFields();
-            refetch();
-        } catch (error: any) {
-            message.error(error.message || `Failed to ${editingVocab ? 'update' : 'create'} vocabulary`);
-        } finally {
-            setSubmitting(false);
-        }
-    };
-
-    const handleDelete = async (id: string) => {
-        try {
-            await VOCABULARY__API.deleteVocabulary(id);
-            message.success('Vocabulary deleted successfully');
-            refetch();
-        } catch (error: any) {
-            message.error(error.message || 'Failed to delete vocabulary');
-        }
-    };
-
-    const handleCancel = () => {
-        setIsModalOpen(false);
-        setEditingVocab(null);
-        form.resetFields();
-    };
+    const modalInitialValues = editingVocab ? {
+        hanzi: editingVocab.hanzi,
+        pinyin: editingVocab.pinyin,
+        meaning: editingVocab.meaning,
+        exampleSentence: editingVocab.exampleSentence,
+        lessonId: editingVocab.lesson.id,
+    } : undefined;
 
     return (
         <div>
-            <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <h2 style={{ margin: 0 }}>Vocabulary Management</h2>
-                <Button
-                    type="primary"
-                    icon={<PlusOutlined />}
-                    onClick={() => setIsModalOpen(true)}
-                >
-                    Create Vocabulary
-                </Button>
-            </div>
-
-            <Table
+            <BaseTable
+                title="Vocabulary Management"
+                data={vocabularies}
                 columns={columns}
-                dataSource={vocabularies}
-                rowKey="id"
                 loading={loading}
-                pagination={{
-                    pageSize: 10,
-                    showSizeChanger: true,
-                    showTotal: (total) => `Total ${total} vocabularies`,
-                }}
+                onCreate={openCreateModal}
+                onEdit={openEditModal}
+                onDelete={handleDelete}
             />
 
-            {/* Create/Edit Vocabulary Modal */}
-            <Modal
+            <BaseModal
+                visible={isModalOpen}
+                onCancel={closeModal}
+                onSubmit={handleSubmit}
                 title={editingVocab ? 'Edit Vocabulary' : 'Create New Vocabulary'}
-                open={isModalOpen}
-                onCancel={handleCancel}
-                footer={null}
-                width={600}
-            >
-                <Form
-                    form={form}
-                    layout="vertical"
-                    onFinish={handleSubmit}
-                >
-                    <Form.Item
-                        label="Hanzi (Chinese Characters)"
-                        name="hanzi"
-                        rules={[{ required: true, message: 'Please input hanzi' }]}
-                    >
-                        <Input placeholder="Enter Chinese characters" />
-                    </Form.Item>
-
-                    <Form.Item
-                        label="Pinyin"
-                        name="pinyin"
-                        rules={[{ required: true, message: 'Please input pinyin' }]}
-                    >
-                        <Input placeholder="Enter pinyin" />
-                    </Form.Item>
-
-                    <Form.Item
-                        label="Meaning"
-                        name="meaning"
-                        rules={[{ required: true, message: 'Please input meaning' }]}
-                    >
-                        <Input placeholder="Enter English meaning" />
-                    </Form.Item>
-
-                    <Form.Item
-                        label="Example Sentence"
-                        name="exampleSentence"
-                    >
-                        <TextArea
-                            rows={3}
-                            placeholder="Enter example sentence (optional)"
-                        />
-                    </Form.Item>
-
-                    <Form.Item
-                        label="Lesson"
-                        name="lessonId"
-                        rules={[{ required: true, message: 'Please select lesson' }]}
-                    >
-                        <Select
-                            placeholder="Select lesson"
-                            options={lessons.map((lesson) => ({
-                                label: `${lesson.title} (${lesson.unit.title})`,
-                                value: lesson.id,
-                            }))}
-                            showSearch
-                            filterOption={(input, option) =>
-                                (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
-                            }
-                        />
-                    </Form.Item>
-
-                    <Form.Item>
-                        <Space style={{ width: '100%', justifyContent: 'flex-end' }}>
-                            <Button onClick={handleCancel}>
-                                Cancel
-                            </Button>
-                            <Button type="primary" htmlType="submit" loading={submitting}>
-                                {editingVocab ? 'Update' : 'Create'}
-                            </Button>
-                        </Space>
-                    </Form.Item>
-                </Form>
-            </Modal>
+                formFields={formFields}
+                initialValues={modalInitialValues}
+                loading={submitting}
+                form={form}
+            />
         </div>
     );
 };
