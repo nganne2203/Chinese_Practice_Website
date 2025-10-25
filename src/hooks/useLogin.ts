@@ -32,8 +32,6 @@ const useLogin = (): UseLoginReturn => {
             if (!result.success) {
                 setError(result.error || 'Login failed');
             }
-            // Success case is handled by the AuthContext
-            // The component can listen to auth state changes
         } catch (err) {
             console.error('Login error in hook:', err);
             setError('An unexpected error occurred');

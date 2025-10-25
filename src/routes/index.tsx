@@ -1,8 +1,8 @@
 import { RouterProvider } from 'react-router';
-import { useAuth } from '../contexts/AuthContext';
 import { getPublicRoutes } from './PublicRoutes';
 import { getProtectedRoutes } from './ProtectedRoutes';
 import { Spin } from 'antd';
+import { useAuth } from '../contexts/AuthContext';
 
 const AppRoutes = () => {
     const { isAuthenticated, loading } = useAuth();
