@@ -3,7 +3,6 @@ import { ROUTE_PATH } from "../constants/Routes";
 import AdminLayout from "../layouts/AdminLayout";
 import UserLayout from "../layouts/UserLayout";
 import NotFound from "../pages/NotFound";
-import Dashboard from "../pages/Dashboard";
 import Unauthorized from "../pages/Unauthorized";
 import DashboardOverview from "../components/admin/DashboardOverview";
 import UserManagement from "../components/admin/UserManagement";
@@ -15,6 +14,11 @@ import QuizManagement from "../components/admin/QuizManagement";
 import QuestionManagement from "../components/admin/QuestionManagement";
 import RolePermissionManagement from "../components/admin/RolePermissionManagement";
 import RoleBasedRedirect, { RequireAdmin, RequireUser } from "../components/auth/RoleBasedRedirect";
+import UserDashboard from "../pages/user/UserDashboard";
+import UserLessons from "../pages/user/UserLessons";
+import UserQuiz from "../pages/user/UserQuiz";
+import UserProfile from "../pages/user/UserProfile";
+import UserProgress from "../pages/user/UserProgress";
 
 export const getProtectedRoutes = createBrowserRouter([
     {
@@ -75,7 +79,6 @@ export const getProtectedRoutes = createBrowserRouter([
             }
         ]
     },
-    // User Routes
     {
         path: ROUTE_PATH.USER_DASHBOARD,
         element: (
@@ -86,49 +89,32 @@ export const getProtectedRoutes = createBrowserRouter([
         children: [
             {
                 index: true,
-                element: <Dashboard />
+                element: <UserDashboard />
             },
             {
                 path: "lessons",
-                element: <div>Lessons Coming Soon</div>
+                element: <UserLessons />
             },
             {
                 path: "quizzes", 
-                element: <div>Quizzes Coming Soon</div>
+                element: <UserQuiz />
             },
             {
                 path: "progress",
-                element: <div>Progress Coming Soon</div>
+                element: <UserProgress />
             },
             {
                 path: "profile",
-                element: <div>Profile Coming Soon</div>
+                element: <UserProfile />
             }
         ]
     },
-    // Legacy dashboard route for backward compatibility
-    {
-        path: ROUTE_PATH.DASHBOARD,
-        element: (
-            <RequireUser>
-                <UserLayout />
-            </RequireUser>
-        ),
-        children: [
-            {
-                index: true,
-                element: <Dashboard />
-            }
-        ]
-    },
-    // Error pages
     {
         path: ROUTE_PATH.UNAUTHORIZED,
         element: <Unauthorized />
     },
-    // Catch all route
     {
-        path: "*",
+        path: ROUTE_PATH.NOT_FOUND,
         element: <NotFound />
     }
 ]);
