@@ -1,4 +1,4 @@
-import { type QuizApiResponse, type QuizDetailApiResponse, type QuizDetailResponse, type QuizRequest, type QuizResponse, type QuizResultApiResponse, type QuizResultResponse, type QuizSubmissionRequest } from "../types/Quiz";
+import { type QuizDetailApiResponse, type QuizDetailResponse, type QuizRequest, type QuizResponse, type QuizResultApiResponse, type QuizResultResponse, type QuizSubmissionRequest, type SingleQuizApiResponse, type SingleQuizDetailApiResponse } from "../types/Quiz";
 import apiClient from "../utils/apiClient";
 
 const deleteQuiz = async (id: string): Promise<void> => {
@@ -13,12 +13,12 @@ const deleteQuiz = async (id: string): Promise<void> => {
 
 const getQuizById = async (id: string): Promise<QuizResponse> => {
     try {
-        const response = await apiClient.get<QuizApiResponse>(`/api/quizzes/${id}`);
+        const response = await apiClient.get<SingleQuizApiResponse>(`/api/quizzes/${id}`);
         if (response.data.code !== 1000 || !response.data.result) {
             throw new Error('Failed to fetch quiz: Invalid response code');
         }
         console.log('Fetched quiz:', response.data.result);
-        return response.data.result[0];
+        return response.data.result;
     } catch (error: any) {
         console.error('Error fetching quiz:', error);
         throw error;
@@ -55,12 +55,12 @@ const getQuizByLesson = async (lessonId: string): Promise<QuizDetailResponse[]> 
 
 const createQuiz = async (field: QuizRequest): Promise<QuizDetailResponse> => {
     try {
-        const response = await apiClient.post<QuizDetailApiResponse>('/api/quizzes', field);
+        const response = await apiClient.post<SingleQuizDetailApiResponse>('/api/quizzes', field);
         if (response.data.code !== 1000 || !response.data.result) {
             throw new Error('Failed to create quiz: Invalid response code');
         }
         console.log('Created quiz:', response.data.result);
-        return response.data.result[0];
+        return response.data.result;
     } catch (error: any) {
         console.error('Error creating quiz:', error);
         throw error;
@@ -77,10 +77,16 @@ const updateQuiz = async (id: string, field: QuizRequest): Promise<void> => {
     }
 }
 
-const startQuiz = async (quizId : string, userId: string): Promise<void> => {
+const startQuiz = async (quizId : string, userId: string): Promise<boolean> => {
     try {
-        await apiClient.post(`/api/quizzes/${quizId}/start/${userId}`);
-        console.log('Started quiz with id:', quizId, 'for user:', userId);
+        const response = await apiClient.post(`/api/quizzes/${quizId}/start/${userId}`);
+        if (response.data.code === 1000) {
+            console.log('Started quiz with id:', quizId, 'for user:', userId);
+            return true;
+        } else {
+            console.error('Failed to start quiz: Invalid response code', response.data.code);
+            return false;
+        }
     } catch (error: any) {
         console.error('Error starting quiz:', error);
         throw error;

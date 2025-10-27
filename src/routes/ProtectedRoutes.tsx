@@ -16,9 +16,13 @@ import RolePermissionManagement from "../components/admin/RolePermissionManageme
 import RoleBasedRedirect, { RequireAdmin, RequireUser } from "../components/auth/RoleBasedRedirect";
 import UserDashboard from "../pages/user/UserDashboard";
 import UserLessons from "../pages/user/UserLessons";
+import UserQuizzes from "../pages/user/UserQuizzes";
 import UserQuiz from "../pages/user/UserQuiz";
 import UserProfile from "../pages/user/UserProfile";
 import UserProgress from "../pages/user/UserProgress";
+import UserUnits from "../pages/user/UserUnits";
+import UserLessonDetail from "../pages/user/UserLessonDetail";
+import UserUnitDetail from "../pages/user/UserUnitDetail";
 
 export const getProtectedRoutes = createBrowserRouter([
     {
@@ -92,11 +96,27 @@ export const getProtectedRoutes = createBrowserRouter([
                 element: <UserDashboard />
             },
             {
+                path: "units",
+                element: <UserUnits />
+            },
+            {
+                path: "units/:unitId",
+                element: <UserUnitDetail />
+            },
+            {
                 path: "lessons",
                 element: <UserLessons />
             },
             {
+                path: "lessons/:lessonId",
+                element: <UserLessonDetail />
+            },
+            {
                 path: "quizzes", 
+                element: <UserQuizzes />
+            },
+            {
+                path: "quiz/:quizId",
                 element: <UserQuiz />
             },
             {

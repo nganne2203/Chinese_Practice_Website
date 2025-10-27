@@ -39,3 +39,4 @@ export type UserRequest = {
 }
 
 export type UserApiResponse = ApiResponse<User[]>;
+export type SingleUserApiResponse = ApiResponse<User>;

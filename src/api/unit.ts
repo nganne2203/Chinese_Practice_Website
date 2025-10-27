@@ -1,14 +1,14 @@
-import { type UnitApiResponse, type UnitRequest, type UnitResponse } from "../types/Unit";
+import { type UnitApiResponse, type UnitRequest, type UnitResponse, type SingleUnitApiResponse } from "../types/Unit";
 import apiClient from "../utils/apiClient";
 
 const getUnitById = async (id : string) : Promise<UnitResponse> => {
     try {
-        const response = await apiClient.get<UnitApiResponse>(`/api/units/${id}`);
+        const response = await apiClient.get<SingleUnitApiResponse>(`/api/units/${id}`);
         if (response.data.code !== 1000 || !response.data.result) {
-            throw new Error('Failed to fetch permissions: Invalid response code');
+            throw new Error('Failed to fetch unit: Invalid response code');
         }
-        console.log('Fetched permissions:', response.data.result);
-        return response.data.result[0];
+        console.log('Fetched unit api:', response.data.result);
+        return response.data.result;
     } catch (error : any) {
         throw new Error("Failed to fetch unit");
     }
@@ -29,12 +29,12 @@ const getUnits = async (level ?: string) : Promise<UnitResponse[]> => {
 
 const createUnit = async (field : UnitRequest) : Promise<UnitResponse> => {
     try {
-        const response = await apiClient.post<UnitApiResponse>('/api/units', field);
+        const response = await apiClient.post<SingleUnitApiResponse>('/api/units', field);
         if (response.data.code !== 1000 || !response.data.result) {
             throw new Error('Failed to create unit: Invalid response code');
         }
         console.log('Created unit:', response.data.result);
-        return response.data.result[0];
+        return response.data.result;
     } catch (error : any) {
         throw new Error("Failed to create unit");
     }
@@ -42,12 +42,12 @@ const createUnit = async (field : UnitRequest) : Promise<UnitResponse> => {
 
 const updateUnit = async (id : string, field : UnitRequest) : Promise<UnitResponse> => {
     try {
-        const response = await apiClient.put<UnitApiResponse>(`/api/units/${id}`, field);
+        const response = await apiClient.put<SingleUnitApiResponse>(`/api/units/${id}`, field);
         if (response.data.code !== 1000 || !response.data.result) {
             throw new Error('Failed to update unit: Invalid response code');
         }
         console.log('Updated unit:', response.data.result);
-        return response.data.result[0];
+        return response.data.result;
     } catch (error : any) {
         if (error.response?.status === 500) throw new Error('Server error occurred');
         if (error.response?.status === 404) throw new Error('Unit not found');

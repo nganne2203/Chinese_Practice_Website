@@ -1,4 +1,4 @@
-import type { User, UserApiResponse, UserChangePasswordRequest, UserRequest, UserUpdateProfileRequest, UserUpdateRoleRequest } from "../types/User";
+import type { User, UserApiResponse, UserChangePasswordRequest, UserRequest, UserUpdateProfileRequest, UserUpdateRoleRequest, SingleUserApiResponse } from "../types/User";
 import apiClient from "../utils/apiClient";
 
 const deleteUser = async (id : string) : Promise<void> => {
@@ -13,12 +13,12 @@ const deleteUser = async (id : string) : Promise<void> => {
 
 const getUserById = async (id : string) : Promise<User> => {
     try {
-        const response = await apiClient.get<UserApiResponse>(`/api/users/${id}`);
+        const response = await apiClient.get<SingleUserApiResponse>(`/api/users/${id}`);
         if (response.data.code !== 1000 || !response.data.result) {
             throw new Error('Failed to fetch user: Invalid response code');
         }
         console.log('Fetched user:', response.data.result);
-        return response.data.result[0];
+        return response.data.result;
     } catch (error : any) {
         console.error('Error fetching user:', error);
         throw error;
@@ -41,12 +41,12 @@ const getAllUsers = async () : Promise<User[]> => {
 
 const getMyInfo = async () : Promise<User> => {
     try {
-        const response = await apiClient.get<UserApiResponse>('/api/users/my-info');
+        const response = await apiClient.get<SingleUserApiResponse>('/api/users/my-info');
         if (response.data.code !== 1000 || !response.data.result) {
             throw new Error('Failed to fetch my info: Invalid response code');
         }
         console.log('Fetched my info:', response.data.result);
-        return response.data.result[0];
+        return response.data.result;
     } catch (error : any) {
         console.error('Error fetching my info:', error);
         throw error;
@@ -55,12 +55,12 @@ const getMyInfo = async () : Promise<User> => {
 
 const createUser = async (field : UserRequest) : Promise<User> => {
     try {
-        const response = await apiClient.post<UserApiResponse>('/api/users', field);
+        const response = await apiClient.post<SingleUserApiResponse>('/api/users', field);
         if (response.data.code !== 1000 || !response.data.result) {
             throw new Error('Failed to create user: Invalid response code');
         }
         console.log('Created user:', response.data.result);
-        return response.data.result[0];
+        return response.data.result;
     } catch (error : any) {
         console.error('Error creating user:', error);
         throw error;

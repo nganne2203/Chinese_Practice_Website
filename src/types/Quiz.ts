@@ -47,6 +47,8 @@ export type QuizResultResponse = {
 export type QuizResultApiResponse = ApiResponse<QuizResultResponse>;
 
 export type QuizApiResponse = ApiResponse<QuizResponse[]>;
+export type SingleQuizApiResponse = ApiResponse<QuizResponse>;
 
 export type QuizDetailApiResponse = ApiResponse<QuizDetailResponse[]>;
+export type SingleQuizDetailApiResponse = ApiResponse<QuizDetailResponse>;
 

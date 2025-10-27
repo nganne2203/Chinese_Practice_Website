@@ -15,3 +15,4 @@ export type UnitResponse = {
 }
 
 export type UnitApiResponse = ApiResponse<UnitResponse[]>;
+export type SingleUnitApiResponse = ApiResponse<UnitResponse>;
