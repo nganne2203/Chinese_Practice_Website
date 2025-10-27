@@ -3,13 +3,14 @@ import { Card, Typography, Space, Row, Col, Button, message, Spin, Tag, Empty } 
 import { BookOutlined, PlayCircleOutlined, ClockCircleOutlined } from '@ant-design/icons';
 import { LESSON_API } from '../../api/lesson';
 import type { LessonResponse } from '../../types/Lesson';
+import { useNavigate } from 'react-router';
 
 const { Title, Text, Paragraph } = Typography;
 
 const UserLessons: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [lessons, setLessons] = useState<LessonResponse[]>([]);
-
+    const navigate = useNavigate();
     useEffect(() => {
         fetchLessons();
     }, []);
@@ -28,7 +29,7 @@ const UserLessons: React.FC = () => {
     };
 
     const handleStartLesson = (lessonId: string) => {
-        message.info(`Starting lesson ${lessonId}...`);
+        navigate(`/app/lessons/${lessonId}`);
     };
 
     if (loading) {

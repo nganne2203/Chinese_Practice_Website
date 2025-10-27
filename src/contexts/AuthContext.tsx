@@ -8,6 +8,7 @@ interface AuthContextType {
     loading: boolean;
     login: (credentials: LoginRequest) => Promise<{ success: boolean; error?: string }>;
     logout: () => void;
+    updateUser: (updatedUser: User) => void;
     isAuthenticated: boolean;
 }
 
@@ -101,6 +102,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         }
     };
 
+    const updateUser = (updatedUser: User) => {
+        setUser(updatedUser);
+        try {
+            localStorage.setItem('userProfile', JSON.stringify(updatedUser));
+        } catch (error) {
+            console.error('Error updating user in localStorage:', error);
+        }
+    };
+
     const isAuthenticated = !!user;
 
     const value: AuthContextType = {
@@ -108,6 +118,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         loading,
         login: loginConst,
         logout,
+        updateUser,
         isAuthenticated,
     };
 
