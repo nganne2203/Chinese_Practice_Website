@@ -1,23 +1,43 @@
-import React, { useState } from 'react';
-import { Card, Typography, Space, Row, Col, Form, Input, Button, message, Avatar, Divider } from 'antd';
-import { UserOutlined, EditOutlined, SaveOutlined, MailOutlined } from '@ant-design/icons';
+import React, { useState, useEffect } from 'react';
+import { Card, Typography, Space, Row, Col, Form, Input, Button, message, Avatar, Divider, Modal } from 'antd';
+import { UserOutlined, EditOutlined, SaveOutlined, MailOutlined, LockOutlined, KeyOutlined } from '@ant-design/icons';
 import { useAuth } from '../../contexts/AuthContext';
-import type { UserUpdateProfileRequest } from '../../types/User';
+import { USER_API } from '../../api/user';
+import type { UserUpdateProfileRequest, UserChangePasswordRequest, User } from '../../types/User';
 
 const { Title, Text } = Typography;
 
 const UserProfile: React.FC = () => {
-    const { user } = useAuth();
+    const { user: authUser, updateUser } = useAuth();
     const [form] = Form.useForm();
+    const [passwordForm] = Form.useForm();
     const [editing, setEditing] = useState(false);
     const [loading, setLoading] = useState(false);
+    const [passwordModalVisible, setPasswordModalVisible] = useState(false);
+    const [passwordLoading, setPasswordLoading] = useState(false);
+    const [userInfo, setUserInfo] = useState<User | null>(null);
+
+    useEffect(() => {
+        fetchUserInfo();
+    }, []);
+
+    const fetchUserInfo = async () => {
+        try {
+            const userData = await USER_API.getMyInfo();
+            setUserInfo(userData);
+        } catch (error) {
+            console.error('Error fetching user info:', error);
+            setUserInfo(authUser);
+        }
+    };
 
     const handleEdit = () => {
         setEditing(true);
         form.setFieldsValue({
-            firstName: user?.firstName || '',
-            lastName: user?.lastName || '',
-            email: user?.email || '',
+            firstName: userInfo?.firstName || '',
+            lastName: userInfo?.lastName || '',
+            email: userInfo?.email || '',
+            birthDate: userInfo?.birthDate ? new Date(userInfo.birthDate).toISOString().split('T')[0] : '',
         });
     };
 
@@ -26,25 +46,76 @@ const UserProfile: React.FC = () => {
         form.resetFields();
     };
 
-    const handleSave = async (values: UserUpdateProfileRequest) => {
+    const handleSave = async (values: UserUpdateProfileRequest & { birthDate?: string }) => {
+        if (!userInfo?.id) {
+            message.error('User ID not found');
+            return;
+        }
+
         try {
             setLoading(true);
-            // await USER_API.updateProfile(user?.id, values);
-            console.log('Updating profile with:', values);
+            
+            const updateData: UserUpdateProfileRequest = {
+                firstName: values.firstName,
+                lastName: values.lastName,
+                email: values.email,
+            };
+
+            await USER_API.updateUserProfile(userInfo.id, updateData);
+            
+            const updatedUser = { ...userInfo, ...updateData };
+            setUserInfo(updatedUser);
+            
+            if (updateUser) {
+                updateUser(updatedUser);
+            }
+            
             message.success('Profile updated successfully!');
             setEditing(false);
         } catch (error) {
             console.error('Error updating profile:', error);
-            message.error('Failed to update profile');
+            message.error('Failed to update profile. Please try again.');
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handlePasswordChange = async (values: { currentPassword: string; newPassword: string; confirmPassword: string }) => {
+        if (!userInfo?.id) {
+            message.error('User ID not found');
+            return;
+        }
+
+        if (values.newPassword !== values.confirmPassword) {
+            message.error('New passwords do not match');
+            return;
+        }
+
+        try {
+            setPasswordLoading(true);
+            
+            const changePasswordData: UserChangePasswordRequest = {
+                currentPassword: values.currentPassword,
+                newPassword: values.newPassword,
+            };
+
+            await USER_API.changePassword(userInfo.id, changePasswordData);
+            
+            message.success('Password changed successfully!');
+            setPasswordModalVisible(false);
+            passwordForm.resetFields();
+        } catch (error) {
+            console.error('Error changing password:', error);
+            message.error('Failed to change password. Please check your current password and try again.');
+        } finally {
+            setPasswordLoading(false);
         }
     };
 
     const accountStats = [
         {
             title: 'Member Since',
-            value: user?.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'N/A',
+            value: userInfo?.createdAt ? new Date(userInfo.createdAt).toLocaleDateString() : 'N/A',
             icon: <UserOutlined style={{ fontSize: 24, color: '#1890ff' }} />,
         },
         {
@@ -53,16 +124,18 @@ const UserProfile: React.FC = () => {
             icon: <UserOutlined style={{ fontSize: 24, color: '#52c41a' }} />,
         },
         {
-            title: 'Learning Level',
-            value: 'HSK 1',
-            icon: <UserOutlined style={{ fontSize: 24, color: '#722ed1' }} />,
+            title: 'User ID',
+            value: userInfo?.id ? userInfo.id.substring(0, 8) + '...' : 'N/A',
+            icon: <KeyOutlined style={{ fontSize: 24, color: '#722ed1' }} />,
         },
         {
-            title: 'Preferred Language',
-            value: 'English',
-            icon: <UserOutlined style={{ fontSize: 24, color: '#fa8c16' }} />,
+            title: 'Last Updated',
+            value: userInfo?.updatedAt ? new Date(userInfo.updatedAt).toLocaleDateString() : 'N/A',
+            icon: <EditOutlined style={{ fontSize: 24, color: '#fa8c16' }} />,
         },
     ];
+
+    const user = userInfo || authUser;
 
     return (
         <div style={{ padding: 24 }}>
@@ -79,15 +152,22 @@ const UserProfile: React.FC = () => {
                 </Card>
 
                 <Row gutter={[16, 16]}>
-                    {/* Profile Information */}
                     <Col xs={24} lg={16}>
                         <Card
                             title="Personal Information"
                             extra={
                                 !editing ? (
-                                    <Button type="primary" icon={<EditOutlined />} onClick={handleEdit}>
-                                        Edit Profile
-                                    </Button>
+                                    <Space>
+                                        <Button 
+                                            icon={<LockOutlined />} 
+                                            onClick={() => setPasswordModalVisible(true)}
+                                        >
+                                            Change Password
+                                        </Button>
+                                        <Button type="primary" icon={<EditOutlined />} onClick={handleEdit}>
+                                            Edit Profile
+                                        </Button>
+                                    </Space>
                                 ) : null
                             }
                         >
@@ -153,6 +233,24 @@ const UserProfile: React.FC = () => {
                                                 <Text strong>Birth Date</Text>
                                                 <div style={{ marginTop: 4 }}>
                                                     <Text>{user?.birthDate ? new Date(user.birthDate).toLocaleDateString() : 'Not provided'}</Text>
+                                                </div>
+                                            </div>
+                                        </Col>
+                                        <Col span={12}>
+                                            <div>
+                                                <Text strong>Roles</Text>
+                                                <div style={{ marginTop: 4 }}>
+                                                    {user?.roles && user.roles.length > 0 ? (
+                                                        <Space wrap>
+                                                            {user.roles.map((role, index) => (
+                                                                <Text key={index} code>
+                                                                    {role.name}
+                                                                </Text>
+                                                            ))}
+                                                        </Space>
+                                                    ) : (
+                                                        <Text>No roles assigned</Text>
+                                                    )}
                                                 </div>
                                             </div>
                                         </Col>
@@ -272,13 +370,96 @@ const UserProfile: React.FC = () => {
                                         <Text type="secondary">Beginner (HSK 1)</Text>
                                     </div>
                                 </div>
-                                <Button type="dashed" block>
-                                    Update Preferences
+                                <Button type="dashed" block disabled>
+                                    Update Preferences (Coming Soon)
                                 </Button>
                             </Space>
                         </Card>
                     </Col>
                 </Row>
+
+                <Modal
+                    title="Change Password"
+                    open={passwordModalVisible}
+                    onCancel={() => {
+                        setPasswordModalVisible(false);
+                        passwordForm.resetFields();
+                    }}
+                    footer={null}
+                    destroyOnClose
+                >
+                    <Form
+                        form={passwordForm}
+                        layout="vertical"
+                        onFinish={handlePasswordChange}
+                    >
+                        <Form.Item
+                            label="Current Password"
+                            name="currentPassword"
+                            rules={[{ required: true, message: 'Please enter your current password' }]}
+                        >
+                            <Input.Password 
+                                prefix={<LockOutlined />} 
+                                placeholder="Enter current password" 
+                            />
+                        </Form.Item>
+
+                        <Form.Item
+                            label="New Password"
+                            name="newPassword"
+                            rules={[
+                                { required: true, message: 'Please enter your new password' },
+                                { min: 6, message: 'Password must be at least 6 characters long' }
+                            ]}
+                        >
+                            <Input.Password 
+                                prefix={<KeyOutlined />} 
+                                placeholder="Enter new password" 
+                            />
+                        </Form.Item>
+
+                        <Form.Item
+                            label="Confirm New Password"
+                            name="confirmPassword"
+                            dependencies={['newPassword']}
+                            rules={[
+                                { required: true, message: 'Please confirm your new password' },
+                                ({ getFieldValue }) => ({
+                                    validator(_, value) {
+                                        if (!value || getFieldValue('newPassword') === value) {
+                                            return Promise.resolve();
+                                        }
+                                        return Promise.reject(new Error('The two passwords do not match!'));
+                                    },
+                                }),
+                            ]}
+                        >
+                            <Input.Password 
+                                prefix={<KeyOutlined />} 
+                                placeholder="Confirm new password" 
+                            />
+                        </Form.Item>
+
+                        <Form.Item style={{ marginBottom: 0, textAlign: 'right' }}>
+                            <Space>
+                                <Button onClick={() => {
+                                    setPasswordModalVisible(false);
+                                    passwordForm.resetFields();
+                                }}>
+                                    Cancel
+                                </Button>
+                                <Button 
+                                    type="primary" 
+                                    htmlType="submit" 
+                                    loading={passwordLoading}
+                                    icon={<SaveOutlined />}
+                                >
+                                    Change Password
+                                </Button>
+                            </Space>
+                        </Form.Item>
+                    </Form>
+                </Modal>
             </Space>
         </div>
     );

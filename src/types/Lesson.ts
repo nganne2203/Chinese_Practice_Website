@@ -15,3 +15,4 @@ export type LessonResponse = {
 }
 
 export type LessonApiResponse = ApiResponse<LessonResponse[]>;
+export type SingleLessonApiResponse = ApiResponse<LessonResponse>;

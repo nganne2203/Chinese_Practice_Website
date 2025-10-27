@@ -12,6 +12,7 @@ import {
     MenuUnfoldOutlined,
     BarChartOutlined,
     SettingOutlined,
+    FolderOutlined,
 } from '@ant-design/icons';
 import { useAuth } from '../contexts/AuthContext';
 import { ROUTE_PATH } from '../constants/Routes';
@@ -45,6 +46,11 @@ const UserLayout: React.FC = () => {
             key: ROUTE_PATH.USER_DASHBOARD,
             icon: <DashboardOutlined />,
             label: 'Dashboard',
+        },
+        {
+            key: '/app/units',
+            icon: <FolderOutlined />,
+            label: 'Units',
         },
         {
             key: '/app/lessons',
